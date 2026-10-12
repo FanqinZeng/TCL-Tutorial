@@ -89,9 +89,9 @@ def main():
   md+='\n## 可以继续扩展\n\n'+'\n'.join('- '+x for x in p['extensions'])+'\n'
   write(ROOT/f'projects/{n}/README.md',md);write(ROOT/f'projects/{n}/starter.tcl',p['starter']+'\n');write(ROOT/f'projects/{n}/solution.tcl',p['solution']+'\n')
   for file,text in p.get('files',{}).items():write(ROOT/f'data/project-{n}'/file,text)
- docs={p.stem:p.read_text() for p in (ROOT/'docs').glob('*.md') if p.stem!='CONTENT_SCHEMA'}
+ docs={p.stem:p.read_text() for p in sorted((ROOT/'docs').glob('*.md')) if p.stem!='CONTENT_SCHEMA'}
  write(ROOT/'site/course.json',json.dumps({'units':UNITS,'lessons':lessons,'projects':projects,'docs':docs},ensure_ascii=False,indent=2)+'\n')
- hashes={p.relative_to(ROOT/'site').as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT/'site').rglob('*') if p.is_file() and p.name not in {'assets.json','index.html'} and 'vendor' not in p.parts}
+ hashes={p.relative_to(ROOT/'site').as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'site').rglob('*')) if p.is_file() and p.name not in {'assets.json','index.html'} and 'vendor' not in p.parts}
  write(ROOT/'site/assets.json',json.dumps(hashes,indent=2)+'\n')
  version=hashlib.sha256(json.dumps(hashes,sort_keys=True).encode()).hexdigest()[:12]
  template=(ROOT/'site/index.template.html').read_text();write(ROOT/'site/index.html',template.replace('@VERSION@',version))
