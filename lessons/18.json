@@ -1,0 +1,223 @@
+{
+  "id": 18,
+  "unit": 6,
+  "title": "自动生成分析摘要：把整条处理链连起来",
+  "summary": "读取多份教学报告，保留来源与错误，汇总路径数量、负 slack 与最差值。",
+  "minutes": 55,
+  "prerequisites": [
+    "文件读写与错误处理",
+    "source 与参数",
+    "列表、字典与过程",
+    "教学约束与路径筛选"
+  ],
+  "objectives": [
+    "将读取、解析和统计拆分为可测试过程",
+    "为每条记录保存文件与行号来源",
+    "明确处理一份报告失败的策略",
+    "生成摘要文件和单独的错误记录",
+    "覆盖空报告、错误报告和不同输入"
+  ],
+  "problem": "每天收到多份教学路径报告，手动相加会漏文件，遇到坏行还可能把半份报告当成完整数据。我们需要可追溯流程：读入每份文件、解析成字典、累计统计、保存摘要，并明确列出没有成功处理的输入。",
+  "steps": [
+    {
+      "title": "定义输入与处理策略",
+      "body": "仍使用上一节 PATH 名称 DELAY 非负十进制数格式。空行和以 # 开头的注释跳过；周期须为正，周期与延迟限定在本教学的 1000 ns 范围内。某文件任何一行失败，就整份文件不计入统计，避免半份结果冒充完整数据；其他成功文件仍可汇总。"
+    },
+    {
+      "title": "读取层返回记录或抛错",
+      "body": "附件 report-tools.tcl 定义 parseReport。每条记录含 source、line、path、delay、slack。catch 包住读取，close 后传递原错误；坏行携带文件名与行号。数值通过已约定的十进制格式检查再转换。没有路径的报告返回空列表，仍是成功读取。"
+    },
+    {
+      "title": "协调层分别收集数据与问题",
+      "body": "collectReports 接受文件列表和周期。成功记录进入 records，失败信息进入 issues，同时记下 loaded 成功文件数。单文件失败与空文件不同：不能把失败静默改成空列表。下方代码会 source 自带的工具；下载或查看课程源码可审查工具全文。"
+    },
+    {
+      "title": "统计层不依赖文件",
+      "body": "summarizeRecords 只接受记录列表，返回 count、negative、worst。空记录用空字符串表示“没有最差值”，显示为“无数据”，绝不把它说成零 slack。负 slack 用 < 0；最差值在所有有效记录中取最小值。"
+    },
+    {
+      "title": "输出时说明结论的范围",
+      "body": "摘要写成功文件数、路径数、负 slack 数、最差 slack；错误清单另存。若有失败输入，标题必须说明为部分结果。来源文件名和行号使异常可以追回原处。这里仍是教学单周期模型，不能作为真实设计签核报告。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "两份报告合成一组记录",
+      "code": "source report-tools.tcl\nset result [collectReports {morning.rpt evening.rpt} 10]\nputs \"成功文件：[dict get $result loaded]\"\nforeach record [dict get $result records] {\n    puts [format \"%s:%d %s slack=%.2f ns\" [dict get $record source] [dict get $record line] [dict get $record path] [dict get $record slack]]\n}",
+      "expected": "成功文件：2\nmorning.rpt:2 a slack=2.00 ns\nmorning.rpt:3 b slack=-0.50 ns\nevening.rpt:1 c slack=1.00 ns\nevening.rpt:2 d slack=-1.20 ns",
+      "files": {
+        "report-tools.tcl": "proc parseReport {path period} {\n    if {![regexp {^[0-9]+(?:\\.[0-9]+)?$} $period]} {\n        error \"周期必须是正十进制数\"\n    }\n    scan $period %f period\n    if {$period <= 0 || $period > 1000} { error \"周期须满足 0 < period <= 1000 ns\" }\n    set ch [open $path r]\n    set status [catch {\n        set records {}\n        set lineNo 0\n        while {[gets $ch line] >= 0} {\n            incr lineNo\n            set line [string trim $line]\n            if {$line eq \"\" || [string match #* $line]} { continue }\n            if {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> name delay]} {\n                error \"$path:$lineNo：教学路径格式错误\"\n            }\n            scan $delay %f delay\n            if {$delay > 1000} { error \"$path:$lineNo：延迟超出教学范围\" }\n            lappend records [dict create source $path line $lineNo path $name delay $delay slack [expr {$period - $delay}]]\n        }\n        set records\n    } result options]\n    close $ch\n    if {$status != 0} { return -options $options $result }\n    return $result\n}\nproc collectReports {paths period} {\n    set records {}\n    set issues {}\n    set loaded 0\n    foreach path $paths {\n        if {[catch {parseReport $path $period} one]} {\n            lappend issues [dict create source $path message $one]\n        } else {\n            incr loaded\n            foreach record $one { lappend records $record }\n        }\n    }\n    return [dict create records $records issues $issues loaded $loaded]\n}\nproc summarizeRecords {records} {\n    set count [llength $records]\n    set negative 0\n    set worst {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} { incr negative }\n        if {$worst eq \"\" || $slack < $worst} { set worst $slack }\n    }\n    return [dict create count $count negative $negative worst $worst]\n}\n",
+        "morning.rpt": "# 原创教学路径；单位 ns\nPATH a DELAY 8.0\nPATH b DELAY 10.5\n",
+        "evening.rpt": "PATH c DELAY 9.0\nPATH d DELAY 11.2\n"
+      }
+    },
+    {
+      "title": "坏报告不混入有效统计",
+      "code": "source report-tools.tcl\nset result [collectReports {morning.rpt bad.rpt} 10]\nset summary [summarizeRecords [dict get $result records]]\nputs \"部分结果：成功 [dict get $result loaded] 份，失败 [llength [dict get $result issues]] 份\"\nputs \"有效路径：[dict get $summary count]\"\nforeach issue [dict get $result issues] { puts [dict get $issue message] }",
+      "expected": "部分结果：成功 1 份，失败 1 份\n有效路径：2\nbad.rpt:2：教学路径格式错误",
+      "files": {
+        "report-tools.tcl": "proc parseReport {path period} {\n    if {![regexp {^[0-9]+(?:\\.[0-9]+)?$} $period]} {\n        error \"周期必须是正十进制数\"\n    }\n    scan $period %f period\n    if {$period <= 0 || $period > 1000} { error \"周期须满足 0 < period <= 1000 ns\" }\n    set ch [open $path r]\n    set status [catch {\n        set records {}\n        set lineNo 0\n        while {[gets $ch line] >= 0} {\n            incr lineNo\n            set line [string trim $line]\n            if {$line eq \"\" || [string match #* $line]} { continue }\n            if {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> name delay]} {\n                error \"$path:$lineNo：教学路径格式错误\"\n            }\n            scan $delay %f delay\n            if {$delay > 1000} { error \"$path:$lineNo：延迟超出教学范围\" }\n            lappend records [dict create source $path line $lineNo path $name delay $delay slack [expr {$period - $delay}]]\n        }\n        set records\n    } result options]\n    close $ch\n    if {$status != 0} { return -options $options $result }\n    return $result\n}\nproc collectReports {paths period} {\n    set records {}\n    set issues {}\n    set loaded 0\n    foreach path $paths {\n        if {[catch {parseReport $path $period} one]} {\n            lappend issues [dict create source $path message $one]\n        } else {\n            incr loaded\n            foreach record $one { lappend records $record }\n        }\n    }\n    return [dict create records $records issues $issues loaded $loaded]\n}\nproc summarizeRecords {records} {\n    set count [llength $records]\n    set negative 0\n    set worst {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} { incr negative }\n        if {$worst eq \"\" || $slack < $worst} { set worst $slack }\n    }\n    return [dict create count $count negative $negative worst $worst]\n}\n",
+        "morning.rpt": "# 原创教学路径；单位 ns\nPATH a DELAY 8.0\nPATH b DELAY 10.5\n",
+        "bad.rpt": "PATH x DELAY 7\n无法解析\n"
+      }
+    },
+    {
+      "title": "写出一份教学摘要",
+      "code": "source report-tools.tcl\nset result [collectReports {morning.rpt evening.rpt} 10]\nset summary [summarizeRecords [dict get $result records]]\nset output [open analysis.txt w]\nputs $output \"教学分析摘要（全部输入已处理）\"\nputs $output \"路径：[dict get $summary count]\"\nputs $output \"负 slack：[dict get $summary negative]\"\nputs $output [format \"最差 slack：%.2f ns\" [dict get $summary worst]]\nclose $output\nset input [open analysis.txt r]\nputs [string trim [read $input]]\nclose $input",
+      "expected": "教学分析摘要（全部输入已处理）\n路径：4\n负 slack：2\n最差 slack：-1.20 ns",
+      "files": {
+        "report-tools.tcl": "proc parseReport {path period} {\n    if {![regexp {^[0-9]+(?:\\.[0-9]+)?$} $period]} {\n        error \"周期必须是正十进制数\"\n    }\n    scan $period %f period\n    if {$period <= 0 || $period > 1000} { error \"周期须满足 0 < period <= 1000 ns\" }\n    set ch [open $path r]\n    set status [catch {\n        set records {}\n        set lineNo 0\n        while {[gets $ch line] >= 0} {\n            incr lineNo\n            set line [string trim $line]\n            if {$line eq \"\" || [string match #* $line]} { continue }\n            if {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> name delay]} {\n                error \"$path:$lineNo：教学路径格式错误\"\n            }\n            scan $delay %f delay\n            if {$delay > 1000} { error \"$path:$lineNo：延迟超出教学范围\" }\n            lappend records [dict create source $path line $lineNo path $name delay $delay slack [expr {$period - $delay}]]\n        }\n        set records\n    } result options]\n    close $ch\n    if {$status != 0} { return -options $options $result }\n    return $result\n}\nproc collectReports {paths period} {\n    set records {}\n    set issues {}\n    set loaded 0\n    foreach path $paths {\n        if {[catch {parseReport $path $period} one]} {\n            lappend issues [dict create source $path message $one]\n        } else {\n            incr loaded\n            foreach record $one { lappend records $record }\n        }\n    }\n    return [dict create records $records issues $issues loaded $loaded]\n}\nproc summarizeRecords {records} {\n    set count [llength $records]\n    set negative 0\n    set worst {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} { incr negative }\n        if {$worst eq \"\" || $slack < $worst} { set worst $slack }\n    }\n    return [dict create count $count negative $negative worst $worst]\n}\n",
+        "morning.rpt": "# 原创教学路径；单位 ns\nPATH a DELAY 8.0\nPATH b DELAY 10.5\n",
+        "evening.rpt": "PATH c DELAY 9.0\nPATH d DELAY 11.2\n"
+      }
+    }
+  ],
+  "exercises": [
+    {
+      "title": "独立统计有效记录",
+      "prompt": "定义 pathSummary {records} 返回 count、negative、worst 字典。worst 为所有有效记录中最小 slack；空输入返回 count=0、negative=0、worst={}。示例数据已经解析。",
+      "starter": "proc pathSummary {records} {\n    # 统计数量、负值数量与最小值\n}\nset records [list [dict create path a slack 2.0] [dict create path b slack -0.5]]\nset s [pathSummary $records]\nputs \"路径：[dict get $s count]；负值：[dict get $s negative]\"\nputs [format \"最差：%.2f\" [dict get $s worst]]",
+      "solution": "proc pathSummary {records} {\n    set negative 0\n    set worst {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} { incr negative }\n        if {$worst eq \"\" || $slack < $worst} { set worst $slack }\n    }\n    return [dict create count [llength $records] negative $negative worst $worst]\n}\nset records [list [dict create path a slack 2.0] [dict create path b slack -0.5]]\nset s [pathSummary $records]\nputs \"路径：[dict get $s count]；负值：[dict get $s negative]\"\nputs [format \"最差：%.2f\" [dict get $s worst]]",
+      "expected": "路径：2；负值：1\n最差：-0.50",
+      "hints": [
+        "worst 初始为空，处理第一条记录时赋值。",
+        "最差值不一定是负的；全部为正时仍取最小值。"
+      ],
+      "checks": [
+        {
+          "label": "空输入不冒充零 slack",
+          "script": "set s [pathSummary {}]; expr {[dict get $s count] == 0 && [dict get $s negative] == 0 && [dict get $s worst] eq {}}"
+        },
+        {
+          "label": "不同数据和零边界",
+          "script": "set s [pathSummary [list [dict create slack 3] [dict create slack 0] [dict create slack -2] [dict create slack -10]]]; expr {[dict get $s count] == 4 && [dict get $s negative] == 2 && [dict get $s worst] == -10}"
+        },
+        {
+          "label": "全部为正也取最小值",
+          "script": "set s [pathSummary [list [dict create slack 3] [dict create slack 1]]]; expr {[dict get $s worst] == 1 && [dict get $s negative] == 0}"
+        }
+      ]
+    },
+    {
+      "title": "文件失败要留痕",
+      "prompt": "source 附带 report-tools.tcl，定义 writeIssues {paths period outputPath}：调用 collectReports，向 outputPath 写入每个失败的“来源 | 原因”一行，关闭文件，返回 result 字典。用 morning.rpt、bad.rpt、empty.rpt 与 10 ns 调用，输出成功数与失败数。空文件算成功。",
+      "starter": "source report-tools.tcl\nproc writeIssues {paths period outputPath} {\n    # 收集文件并写入错误清单，最后返回字典\n}\nset result [writeIssues {morning.rpt bad.rpt empty.rpt} 10 errors.txt]\nputs \"成功：[dict get $result loaded]；失败：[llength [dict get $result issues]]\"",
+      "solution": "source report-tools.tcl\nproc writeIssues {paths period outputPath} {\n    set result [collectReports $paths $period]\n    set output [open $outputPath w]\n    foreach issue [dict get $result issues] {\n        puts $output \"[dict get $issue source] | [dict get $issue message]\"\n    }\n    close $output\n    return $result\n}\nset result [writeIssues {morning.rpt bad.rpt empty.rpt} 10 errors.txt]\nputs \"成功：[dict get $result loaded]；失败：[llength [dict get $result issues]]\"",
+      "expected": "成功：2；失败：1",
+      "hints": [
+        "collectReports 返回 records、issues、loaded 字段。",
+        "foreach issues，把 source 和 message 写入文件，而非显示成功掩盖错误。"
+      ],
+      "checks": [
+        {
+          "label": "有效记录不包含坏报告部分数据",
+          "script": "expr {[dict get $result loaded] == 2 && [llength [dict get $result records]] == 2 && [llength [dict get $result issues]] == 1}"
+        },
+        {
+          "label": "错误清单保留来源和行号",
+          "script": "set ch [open errors.txt r]; set text [read $ch]; close $ch; expr {$text eq \"bad.rpt | bad.rpt:2：教学路径格式错误\n\"}"
+        },
+        {
+          "label": "另一批文件与缺失文件仍写实际错误",
+          "script": "set r [writeIssues {single.rpt absent.rpt} 10 other-errors.txt]; set ch [open other-errors.txt r]; set s [read $ch]; close $ch; expr {[dict get $r loaded] == 1 && [llength [dict get $r records]] == 1 && [llength [dict get $r issues]] == 1 && [string match {absent.rpt | *} $s]}"
+        },
+        {
+          "label": "没有输入时清单为空",
+          "script": "set r [writeIssues {} 10 no-errors.txt]; set ch [open no-errors.txt r]; set s [read $ch]; close $ch; expr {[dict get $r loaded] == 0 && [dict get $r records] eq {} && [dict get $r issues] eq {} && $s eq {}}"
+        }
+      ],
+      "files": {
+        "report-tools.tcl": "proc parseReport {path period} {\n    if {![regexp {^[0-9]+(?:\\.[0-9]+)?$} $period]} {\n        error \"周期必须是正十进制数\"\n    }\n    scan $period %f period\n    if {$period <= 0 || $period > 1000} { error \"周期须满足 0 < period <= 1000 ns\" }\n    set ch [open $path r]\n    set status [catch {\n        set records {}\n        set lineNo 0\n        while {[gets $ch line] >= 0} {\n            incr lineNo\n            set line [string trim $line]\n            if {$line eq \"\" || [string match #* $line]} { continue }\n            if {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> name delay]} {\n                error \"$path:$lineNo：教学路径格式错误\"\n            }\n            scan $delay %f delay\n            if {$delay > 1000} { error \"$path:$lineNo：延迟超出教学范围\" }\n            lappend records [dict create source $path line $lineNo path $name delay $delay slack [expr {$period - $delay}]]\n        }\n        set records\n    } result options]\n    close $ch\n    if {$status != 0} { return -options $options $result }\n    return $result\n}\nproc collectReports {paths period} {\n    set records {}\n    set issues {}\n    set loaded 0\n    foreach path $paths {\n        if {[catch {parseReport $path $period} one]} {\n            lappend issues [dict create source $path message $one]\n        } else {\n            incr loaded\n            foreach record $one { lappend records $record }\n        }\n    }\n    return [dict create records $records issues $issues loaded $loaded]\n}\nproc summarizeRecords {records} {\n    set count [llength $records]\n    set negative 0\n    set worst {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} { incr negative }\n        if {$worst eq \"\" || $slack < $worst} { set worst $slack }\n    }\n    return [dict create count $count negative $negative worst $worst]\n}\n",
+        "morning.rpt": "# 原创教学路径；单位 ns\nPATH a DELAY 8.0\nPATH b DELAY 10.5\n",
+        "evening.rpt": "PATH c DELAY 9.0\nPATH d DELAY 11.2\n",
+        "bad.rpt": "PATH x DELAY 7\n无法解析\n",
+        "empty.rpt": "# 没有路径\n\n",
+        "single.rpt": "PATH z DELAY 12\n",
+        "different.rpt": "PATH new1 DELAY 1\nPATH new2 DELAY 2\n",
+        "leading.rpt": "PATH lead DELAY 08\n"
+      }
+    },
+    {
+      "title": "生成可重复运行的摘要流程",
+      "prompt": "定义 buildAnalysis {paths period outputPath}，调用工具收集与统计，写入摘要三行和状态行；状态为“完整”或“部分”。没有路径时最差值显示“无数据”，否则显示两位小数加 ns。返回原 collectReports 字典，供后续检查来源和问题。",
+      "starter": "source report-tools.tcl\nproc buildAnalysis {paths period outputPath} {\n    # 生成状态、路径数、负 slack 数、最差 slack\n}\nset result [buildAnalysis {morning.rpt evening.rpt} 10 analysis.txt]\nset ch [open analysis.txt r]\nputs [string trim [read $ch]]\nclose $ch",
+      "solution": "source report-tools.tcl\nproc buildAnalysis {paths period outputPath} {\n    set result [collectReports $paths $period]\n    set summary [summarizeRecords [dict get $result records]]\n    set status \"完整\"\n    if {[llength [dict get $result issues]] > 0} { set status \"部分\" }\n    set worst [dict get $summary worst]\n    if {$worst eq \"\"} {\n        set displayed \"无数据\"\n    } else {\n        set displayed [format \"%.2f ns\" $worst]\n    }\n    set out [open $outputPath w]\n    puts $out \"教学摘要：$status\"\n    puts $out \"路径：[dict get $summary count]\"\n    puts $out \"负 slack：[dict get $summary negative]\"\n    puts $out \"最差 slack：$displayed\"\n    close $out\n    return $result\n}\nset result [buildAnalysis {morning.rpt evening.rpt} 10 analysis.txt]\nset ch [open analysis.txt r]\nputs [string trim [read $ch]]\nclose $ch",
+      "expected": "教学摘要：完整\n路径：4\n负 slack：2\n最差 slack：-1.20 ns",
+      "hints": [
+        "统计只使用 result 的 records；是否部分由 issues 是否为空决定。",
+        "空 worst 先分支，避免对空串 format %.2f。写完 close，最后 return result。"
+      ],
+      "checks": [
+        {
+          "label": "不同输入不能写死统计",
+          "script": "set r [buildAnalysis {single.rpt} 10 other-analysis.txt]; set ch [open other-analysis.txt r]; set s [read $ch]; close $ch; expr {$s eq \"教学摘要：完整\n路径：1\n负 slack：1\n最差 slack：-2.00 ns\n\" && [dict get $r loaded] == 1}"
+        },
+        {
+          "label": "空文件没有最差值",
+          "script": "buildAnalysis {empty.rpt} 10 empty-analysis.txt; set ch [open empty-analysis.txt r]; set s [read $ch]; close $ch; expr {$s eq \"教学摘要：完整\n路径：0\n负 slack：0\n最差 slack：无数据\n\"}"
+        },
+        {
+          "label": "坏输入是部分结果，来源仍保留",
+          "script": "set r [buildAnalysis {different.rpt bad.rpt} 10 partial.txt]; set ch [open partial.txt r]; set s [read $ch]; close $ch; expr {$s eq \"教学摘要：部分\n路径：2\n负 slack：0\n最差 slack：8.00 ns\n\" && [llength [dict get $r issues]] == 1 && [dict get [lindex [dict get $r records] 0] source] eq \"different.rpt\"}"
+        },
+        {
+          "label": "数值边界和资源释放",
+          "script": "set r [parseReport leading.rpt 10]; expr {[dict get [lindex $r 0] delay] == 8 && [dict get [lindex $r 0] slack] == 2 && [catch {parseReport morning.rpt 0}] == 1 && [llength [chan names]] == 3}"
+        }
+      ],
+      "files": {
+        "report-tools.tcl": "proc parseReport {path period} {\n    if {![regexp {^[0-9]+(?:\\.[0-9]+)?$} $period]} {\n        error \"周期必须是正十进制数\"\n    }\n    scan $period %f period\n    if {$period <= 0 || $period > 1000} { error \"周期须满足 0 < period <= 1000 ns\" }\n    set ch [open $path r]\n    set status [catch {\n        set records {}\n        set lineNo 0\n        while {[gets $ch line] >= 0} {\n            incr lineNo\n            set line [string trim $line]\n            if {$line eq \"\" || [string match #* $line]} { continue }\n            if {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> name delay]} {\n                error \"$path:$lineNo：教学路径格式错误\"\n            }\n            scan $delay %f delay\n            if {$delay > 1000} { error \"$path:$lineNo：延迟超出教学范围\" }\n            lappend records [dict create source $path line $lineNo path $name delay $delay slack [expr {$period - $delay}]]\n        }\n        set records\n    } result options]\n    close $ch\n    if {$status != 0} { return -options $options $result }\n    return $result\n}\nproc collectReports {paths period} {\n    set records {}\n    set issues {}\n    set loaded 0\n    foreach path $paths {\n        if {[catch {parseReport $path $period} one]} {\n            lappend issues [dict create source $path message $one]\n        } else {\n            incr loaded\n            foreach record $one { lappend records $record }\n        }\n    }\n    return [dict create records $records issues $issues loaded $loaded]\n}\nproc summarizeRecords {records} {\n    set count [llength $records]\n    set negative 0\n    set worst {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} { incr negative }\n        if {$worst eq \"\" || $slack < $worst} { set worst $slack }\n    }\n    return [dict create count $count negative $negative worst $worst]\n}\n",
+        "morning.rpt": "# 原创教学路径；单位 ns\nPATH a DELAY 8.0\nPATH b DELAY 10.5\n",
+        "evening.rpt": "PATH c DELAY 9.0\nPATH d DELAY 11.2\n",
+        "bad.rpt": "PATH x DELAY 7\n无法解析\n",
+        "empty.rpt": "# 没有路径\n\n",
+        "single.rpt": "PATH z DELAY 12\n",
+        "different.rpt": "PATH new1 DELAY 1\nPATH new2 DELAY 2\n",
+        "leading.rpt": "PATH lead DELAY 08\n"
+      }
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "一份文件读到坏行后，保留前几条数据，却标成整份成功。",
+      "fix": "定义明确策略。本课任一坏行让整份文件不入统计，记录来源和行号；其他成功文件可以形成标明“部分”的摘要。"
+    },
+    {
+      "problem": "空输入时把最差 slack 初始化为 0，报告“最差 0 ns”。",
+      "fix": "没有记录就没有最差值。用独立空状态，显示“无数据”，不制造不存在的路径。"
+    }
+  ],
+  "exploration": "将最后练习的 period 改成 12，观察负 slack 数归零但最差值仍来自真实记录。加入 bad.rpt，摘要应变为“部分”，有效统计不包含坏文件中的第一条路径。查看返回字典 issues 找原因。",
+  "quiz": [
+    {
+      "question": "empty.rpt 只有注释，与 bad.rpt 有非法行，两者应如何区分？",
+      "options": [
+        "都算读取失败",
+        "空文件成功且零记录，坏文件失败且留错误",
+        "都静默返回空列表"
+      ],
+      "answer": 1,
+      "explanation": "空数据是合法状态，失败是另一种状态，需要分别记录。"
+    },
+    {
+      "question": "所有路径 slack 都大于 0，worst 应是什么？",
+      "options": [
+        "0",
+        "最小的那个正值",
+        "无数据"
+      ],
+      "answer": 1,
+      "explanation": "worst 是全部有效路径中的最小 slack；只有没有记录时才是无数据。"
+    }
+  ],
+  "cheatsheet": [
+    "流水线：文件 → parseReport → records / issues → summarizeRecords → 摘要",
+    "记录来源：source、line；计算字段：path、delay、slack",
+    "空文件 ≠ 失败文件；部分结果必须标明。",
+    "文件处理后 close；错误保存原因，必要时 return -options。",
+    "教学范围：同周期简化 setup、十进制非负延迟、最大 1000 ns；不替代真实 STA。"
+  ],
+  "next": "主课已经完成。接下来选择综合项目 E 深入路径筛选，或项目 F 构建带配置和错误清单的完整流程；也可回到 A–D 将同样技能用于生活和实验数据。",
+  "view": "pipeline",
+  "diagram": "assets/diagrams/18.svg"
+}

@@ -1,0 +1,172 @@
+{
+  "id": 9,
+  "unit": 3,
+  "title": "正则表达式入门",
+  "summary": "从清楚约定的日志格式中提取时间、数值和状态。",
+  "minutes": 40,
+  "prerequisites": [
+    "01–08：字符串、条件、循环、列表与字典。"
+  ],
+  "objectives": [
+    "用 regexp 判断文本是否匹配",
+    "用小型捕获组提取字段",
+    "用花括号保护正则模式",
+    "区分完整匹配与部分匹配",
+    "判断何时 string match 或 split 已经足够"
+  ],
+  "problem": "教学日志一行写作“09:15 value=23 status=OK”。我们需要时间、整数数值和状态三个字段，遇到“broken row”要标记为无法解析。正则表达式是描述文本模式的规则；从易懂的字段开始，不需要背一整串符号。",
+  "steps": [
+    {
+      "title": "先判断，再提取",
+      "body": "regexp {ERROR} $line 检查是否出现 ERROR，返回 1 或 0；它默认可匹配文本中的一段。需要整行符合格式时加 ^ 和 $。如果只判断后缀或固定文字，string match 与 string first 往往更清楚；简单的固定分隔字段也可用 split。"
+    },
+    {
+      "title": "把模式拆成小块",
+      "body": "[0-9] 表示一个十进制数字，+ 表示前面部分重复一次或更多次；([0-9]+) 在匹配数字时保存捕获组。时间的 ([0-9]{2}:[0-9]{2}) 表示两位数字、冒号、两位数字。本节模式只验证外形，不保证 29:99 是真实时刻。复杂格式应增加专门的有效性检查。"
+    },
+    {
+      "title": "按位置接收捕获结果",
+      "body": "regexp {^(... )$} $line whole time value status 的变量顺序依次接收整段匹配与每个括号组。本节完整模式为 ^([0-9]{2}:[0-9]{2}) value=(-?[0-9]+) status=(OK|WARN|ERROR)$。-? 表示负号可有可无，竖线表示三个候选状态之一。只有返回 1 时才使用捕获变量；不匹配时不要读取上一次的残留结果。"
+    },
+    {
+      "title": "保护模式，控制复杂度",
+      "body": "正则里的方括号是字符集合；如果模式放进双引号，Tcl 会先把 [0-9] 当命令替换，通常报错。用花括号把模式作为一个词传入 regexp。regexp -- $pattern $text 用 -- 结束选项，适合模式可能以 - 开头的情况。匹配成功只是第一步，是否允许负读数、是否是真实时间还要按业务规则检查。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "不用正则的对照：固定字段",
+      "code": "set line {09:15 23 OK}\nset fields [split $line \" \"]\nputs \"时间：[lindex $fields 0]\"\nputs \"值：[lindex $fields 1]\"\nputs \"状态：[lindex $fields 2]\"\nputs [string match {ERROR:*} {ERROR: input missing}]",
+      "expected": "时间：09:15\n值：23\n状态：OK\n1"
+    },
+    {
+      "title": "三个小捕获组",
+      "code": "set line {09:15 value=23 status=OK}\nset pattern {^([0-9]{2}:[0-9]{2}) value=(-?[0-9]+) status=(OK|WARN|ERROR)$}\nif {[regexp -- $pattern $line whole time value status]} {\n    puts \"时间：$time\"\n    puts \"值：$value\"\n    puts \"状态：$status\"\n}",
+      "expected": "时间：09:15\n值：23\n状态：OK"
+    },
+    {
+      "title": "对不符合约定的行明确处理",
+      "code": "set pattern {^([0-9]{2}:[0-9]{2}) value=(-?[0-9]+) status=(OK|WARN|ERROR)$}\nforeach line [list {10:02 value=-3 status=WARN} {broken row} {10:03 value=7 status=UNKNOWN}] {\n    if {[regexp -- $pattern $line whole time value status]} {\n        puts \"$time / $value / $status\"\n    } else {\n        puts \"无法解析：$line\"\n    }\n}",
+      "expected": "10:02 / -3 / WARN\n无法解析：broken row\n无法解析：10:03 value=7 status=UNKNOWN"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "提取整数温度",
+      "prompt": "line=\"temp=24\"。用整行匹配模式 temp= 后接一位或多位数字，把整数文字捕获到 value，把 regexp 返回值存为 matched。输出“匹配：1，温度：24”。",
+      "starter": "set line {temp=24}\nset matched 0\nset value \"\"\n# 用花括号保护模式，保存捕获组\nputs \"匹配：$matched，温度：$value\"",
+      "solution": "set line {temp=24}\nset value \"\"\nset matched [regexp {^temp=([0-9]+)$} $line whole value]\nputs \"匹配：$matched，温度：$value\"",
+      "expected": "匹配：1，温度：24",
+      "hints": [
+        "整行匹配用 ^ 和 $，数字组用 ([0-9]+)。",
+        "whole 接收整段匹配，value 接收第一个括号组。"
+      ],
+      "checks": [
+        {
+          "label": "提取捕获组而非整行",
+          "script": "expr {$matched == 1 && $value eq \"24\" && $whole eq $line}"
+        }
+      ]
+    },
+    {
+      "title": "验证三种输入，保留负数和零",
+      "prompt": "samples 包含 temp=-8、temp=0、temp=bad。完整匹配允许可选负号，生成 values={-8 0}，把无法解析的原行保存到 rejected。输出值列表和拒绝列表。",
+      "starter": "set samples [list {temp=-8} {temp=0} {temp=bad}]\nset values {}\nset rejected {}\n# 每行成功才读取捕获值\nputs \"有效：[join $values {, }]\"\nputs \"拒绝：[join $rejected {, }]\"",
+      "solution": "set samples [list {temp=-8} {temp=0} {temp=bad}]\nset values {}\nset rejected {}\nforeach line $samples {\n    if {[regexp {^temp=(-?[0-9]+)$} $line whole value]} {\n        lappend values $value\n    } else {\n        lappend rejected $line\n    }\n}\nputs \"有效：[join $values {, }]\"\nputs \"拒绝：[join $rejected {, }]\"",
+      "expected": "有效：-8, 0\n拒绝：temp=bad",
+      "hints": [
+        "把 -? 放在数字组内部，捕获值才能包括负号。",
+        "regexp 失败时进入 else，不把上一次 value 加入结果。"
+      ],
+      "checks": [
+        {
+          "label": "负数与零都成功捕获",
+          "script": "expr {$values eq {-8 0} && [llength $values] == 2}"
+        },
+        {
+          "label": "非法文字明确保留",
+          "script": "expr {$rejected eq {temp=bad} && [llength $samples] == [llength $values] + [llength $rejected]}"
+        }
+      ]
+    },
+    {
+      "title": "日志转记录并筛选警告",
+      "prompt": "lines 包含 08:00 value=12 status=OK、08:01 value=-2 status=WARN、08:02 value=0 status=ERROR 和一条空行。解析成功后生成含 time/value/status 的字典存入 records；WARN 或 ERROR 的时间收集到 attention；解析失败次数保存在 rejectedCount。输出记录数、需要关注的时间、拒绝次数。",
+      "starter": "set lines [list {08:00 value=12 status=OK} {08:01 value=-2 status=WARN} {08:02 value=0 status=ERROR} \"\"]\nset pattern {^([0-9]{2}:[0-9]{2}) value=(-?[0-9]+) status=(OK|WARN|ERROR)$}\nset records {}\nset attention {}\nset rejectedCount 0\n# 解析、构造记录并按状态筛选\nputs \"记录：[llength $records]\"\nputs \"关注：[join $attention {, }]\"\nputs \"拒绝：$rejectedCount\"",
+      "solution": "set lines [list {08:00 value=12 status=OK} {08:01 value=-2 status=WARN} {08:02 value=0 status=ERROR} \"\"]\nset pattern {^([0-9]{2}:[0-9]{2}) value=(-?[0-9]+) status=(OK|WARN|ERROR)$}\nset records {}\nset attention {}\nset rejectedCount 0\nforeach line $lines {\n    if {![regexp -- $pattern $line whole time value status]} {\n        incr rejectedCount\n        continue\n    }\n    lappend records [dict create time $time value $value status $status]\n    if {$status eq \"WARN\" || $status eq \"ERROR\"} {\n        lappend attention $time\n    }\n}\nputs \"记录：[llength $records]\"\nputs \"关注：[join $attention {, }]\"\nputs \"拒绝：$rejectedCount\"",
+      "expected": "记录：3\n关注：08:01, 08:02\n拒绝：1",
+      "hints": [
+        "regexp 成功后用 dict create 构造一条记录。",
+        "WARN 和 ERROR 用 || 连接；空行是一次失败，不是值为 0 的记录。"
+      ],
+      "checks": [
+        {
+          "label": "每个字段都来自对应的日志行",
+          "script": "expr {[llength $records] == 3 && [dict get [lindex $records 0] time] eq \"08:00\" && [dict get [lindex $records 1] value] eq \"-2\" && [dict get [lindex $records 2] value] eq \"0\" && [dict get [lindex $records 2] status] eq \"ERROR\"}"
+        },
+        {
+          "label": "筛选与空行统计正确",
+          "script": "expr {$attention eq {08:01 08:02} && $rejectedCount == 1 && [llength $lines] == [llength $records] + $rejectedCount}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "把模式写成 \"[0-9]+\"，出现 invalid command name",
+      "fix": "Tcl 在正则之前先处理双引号里的方括号。改用 {[0-9]+} 保护正则语法。"
+    },
+    {
+      "problem": "没有 ^ 和 $，把 temp=12abc 也当成完整记录",
+      "fix": "默认可匹配局部子串。完整字段或整行验证加锚点，再考虑额外的业务合法性检查。"
+    },
+    {
+      "problem": "regexp 返回 0 后仍使用 value",
+      "fix": "它可能仍是上一行捕获的值。仅在匹配成功分支处理捕获结果，失败分支记录原行或错误。"
+    }
+  ],
+  "exploration": "把第二个例子 value=23 改为 value=0、value=-7、value=2.5 和 value=abc，分别预测是否匹配。当前模式只允许整数，小数不应偷偷通过。再改成 29:99，确认模式匹配不等于时间合法。",
+  "quiz": [
+    {
+      "question": "为什么把正则模式写在花括号里？",
+      "options": [
+        "让 Tcl 在传给 regexp 前不把方括号当命令执行",
+        "这样模式只能匹配普通文字",
+        "因为 regexp 不支持双引号"
+      ],
+      "answer": 0,
+      "explanation": "花括号保护正则元字符；regexp 仍会按自己的规则解释模式。"
+    },
+    {
+      "question": "regexp {temp=([0-9]+)} {temp=12abc} 为什么可能返回 1？",
+      "options": [
+        "它自动验证了整行",
+        "没有锚点，局部匹配 temp=12 就足够",
+        "捕获组禁止匹配尾部"
+      ],
+      "answer": 1,
+      "explanation": "要整行符合格式，应使用 ^temp=([0-9]+)$。"
+    },
+    {
+      "question": "固定的 ERROR: 前缀判断一定要正则吗？",
+      "options": [
+        "一定要",
+        "不需要，string match {ERROR:*} 也能清楚表达",
+        "Tcl 不能判断前缀"
+      ],
+      "answer": 1,
+      "explanation": "选最简单清楚的工具；正则适合需要模式结构与捕获时使用。"
+    }
+  ],
+  "cheatsheet": [
+    "regexp {模式} $text：是否匹配，返回 1/0",
+    "regexp -- $pattern $text whole group1 ...：接收整段与捕获组",
+    "^ / $：开头 / 结尾锚点",
+    "[0-9]+：一个或更多数字；-?：可选负号",
+    "(...)：捕获组；OK|WARN：候选模式",
+    "成功后再读取捕获结果；外形匹配后仍需业务校验"
+  ],
+  "next": "现在可以清理和解析一组数据。下一节把这些操作装进过程，让同一份逻辑接受不同输入并返回结果。",
+  "view": "regex",
+  "diagram": "assets/diagrams/09.svg"
+}

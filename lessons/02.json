@@ -1,0 +1,162 @@
+{
+  "id": 2,
+  "unit": 1,
+  "title": "变量与计算",
+  "summary": "保存价格和数量，让购物清单的金额自动更新。",
+  "minutes": 30,
+  "prerequisites": [
+    "01：能运行 puts，并区分命令和参数。"
+  ],
+  "objectives": [
+    "使用 set 保存和读取变量",
+    "使用 $变量名把值放进文字",
+    "用 expr {...} 进行数值运算",
+    "用 incr 更新整数计数",
+    "区分整数除法与需要小数的计算"
+  ],
+  "problem": "采购表上有笔记本单价 18 元、数量 3 本、运费 6 元。我们先保存三项原始数据，再得到 60 元总价。改动数量时，金额应重新计算，无需手工修改输出。变量是一段有名字、以后还能读取的存储位置。",
+  "steps": [
+    {
+      "title": "为数据取名字",
+      "body": "set price 18 把值 18 保存到名为 price 的变量；set price 不带新值时读取它。$price 是变量替换：Tcl 把当前位置换成变量的值。变量名区分大小写；price 与 Price 是两个名字。"
+    },
+    {
+      "title": "在表达式里计算",
+      "body": "set total [expr {$price * $quantity + $shipping}] 先执行方括号中的 expr，再把结果交给外面的 set。expr 接收算术表达式；推荐用花括号包住它。这样变量替换由表达式求值器执行，避免 Tcl 在求值前多处理一遍表达式，也能保留短路计算并利于编译。不要为了计算去拼接一大段代码。"
+    },
+    {
+      "title": "整数和小数有区别",
+      "body": "expr {5 / 2} 得到整数 2；expr {5 / 2.0} 得到 2.5。要计算平均数，可让除数是小数或使用 double(...)。金额展示可使用 format %.2f，但显示两位小数并不等于已经建立严谨的财务计算模型；本课程只处理教学数据。"
+    },
+    {
+      "title": "计数器逐步增加",
+      "body": "incr count 默认把整数变量增加 1；incr count 2 增加 2；incr count -1 减少 1。incr 的第一个参数是变量名称，因此写 incr count，而不是 incr $count。本节先明确初始化，容易看清状态从哪里开始。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "采购总价",
+      "code": "set price 18\nset quantity 3\nset shipping 6\nset total [expr {$price * $quantity + $shipping}]\nputs \"总价：$total 元\"",
+      "expected": "总价：60 元"
+    },
+    {
+      "title": "整数除法与均价",
+      "code": "puts [expr {5 / 2}]\nputs [expr {5 / 2.0}]\nset subtotal 47\nset pieces 4\nset average [expr {double($subtotal) / $pieces}]\nputs [format \"平均：%.2f 元\" $average]",
+      "expected": "2\n2.5\n平均：11.75 元"
+    },
+    {
+      "title": "记录报名人数变化",
+      "code": "set count 8\nincr count\nincr count 2\nincr count -1\nputs \"当前人数：$count\"",
+      "expected": "当前人数：10"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "计算材料费用",
+      "prompt": "保留 price=12、quantity=4，用 expr 把乘积保存为 total，再输出“材料费：48”。",
+      "starter": "set price 12\nset quantity 4\nset total 0\nputs \"材料费：$total\"",
+      "solution": "set price 12\nset quantity 4\nset total [expr {$price * $quantity}]\nputs \"材料费：$total\"",
+      "expected": "材料费：48",
+      "hints": [
+        "相乘使用 *。",
+        "set total [expr {$price * $quantity}] 把求值结果存进变量。"
+      ],
+      "checks": [
+        {
+          "label": "由原始价格和数量得到金额",
+          "script": "expr {$price == 12 && $quantity == 4 && $total == $price * $quantity}"
+        }
+      ]
+    },
+    {
+      "title": "算折扣，并处理零件数边界",
+      "prompt": "订单单价 25 元、数量 3 件，减免 10 元；另一个订单数量为 0。把两个应付金额分别存为 payable、emptyPayable：首单减免 10，空单按单价×0 计算且没有减免。输出两行金额。",
+      "starter": "set price 25\nset quantity 3\nset discount 10\nset emptyQuantity 0\nset payable 0\nset emptyPayable 1\nputs \"应付：$payable\"\nputs \"空单：$emptyPayable\"",
+      "solution": "set price 25\nset quantity 3\nset discount 10\nset emptyQuantity 0\nset payable [expr {$price * $quantity - $discount}]\nset emptyPayable [expr {$price * $emptyQuantity}]\nputs \"应付：$payable\"\nputs \"空单：$emptyPayable\"",
+      "expected": "应付：65\n空单：0",
+      "hints": [
+        "首单是乘积减去 discount。",
+        "空单只乘 emptyQuantity；不能照搬首单的减免。"
+      ],
+      "checks": [
+        {
+          "label": "首单折扣正确",
+          "script": "expr {$price == 25 && $quantity == 3 && $discount == 10 && $payable == $price * $quantity - $discount}"
+        },
+        {
+          "label": "零件数金额为零",
+          "script": "expr {$emptyQuantity == 0 && $emptyPayable == 0}"
+        }
+      ]
+    },
+    {
+      "title": "报名统计与平均费用",
+      "prompt": "初始 6 人，新加入 3 人后退出 1 人。用 incr 更新 count，把总场地费 100 元除以最终人数得到 average，并用 format 输出两位小数。",
+      "starter": "set count 6\nset fee 100\n# 用 incr 更新人数，再求平均\nset average 0\nputs \"人数：$count\"\nputs [format \"人均：%.2f\" $average]",
+      "solution": "set count 6\nset fee 100\nincr count 3\nincr count -1\nset average [expr {double($fee) / $count}]\nputs \"人数：$count\"\nputs [format \"人均：%.2f\" $average]",
+      "expected": "人数：8\n人均：12.50",
+      "hints": [
+        "先完成两次 incr，再读取 count。",
+        "用 double($fee) 保留小数；输出用 format %.2f。"
+      ],
+      "checks": [
+        {
+          "label": "更新后的报名人数",
+          "script": "expr {$count == 8}"
+        },
+        {
+          "label": "均摊费用保留小数",
+          "script": "expr {$fee == 100 && abs($average - 12.5) < 1e-9 && abs($average * $count - $fee) < 1e-9}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "写 puts price，却只显示 price",
+      "fix": "读取变量要用 $price，或执行 [set price]；普通文字不会自动读取同名变量。"
+    },
+    {
+      "problem": "写 expr {5 / 2}，期望 2.5",
+      "fix": "两个操作数都是整数时做整数除法。改成 expr {5 / 2.0}，或显式使用 double(5)。"
+    },
+    {
+      "problem": "写 incr $count",
+      "fix": "incr 接收变量名称。若 count=8，incr $count 会去更新名为 8 的变量；应写 incr count。"
+    }
+  ],
+  "exploration": "把总价例子的 quantity 依次改成 1、0、5，观察 total。再把 price 改成 18.5，确认输出类型和小数变化。思考：数据合法性应在哪里检查？第 04 节会引入条件判断。",
+  "quiz": [
+    {
+      "question": "set n 4 后，哪个命令把 n 增加 2？",
+      "options": [
+        "incr $n 2",
+        "incr n 2",
+        "set n n+2"
+      ],
+      "answer": 1,
+      "explanation": "incr 的参数是变量名字 n，第二个参数指定增量。"
+    },
+    {
+      "question": "为什么推荐 expr {$a + $b}？",
+      "options": [
+        "花括号让 expr 永远看不到变量",
+        "表达式求值器仍读取变量，同时避免 Tcl 提前替换表达式",
+        "只有带花括号才支持加法"
+      ],
+      "answer": 1,
+      "explanation": "花括号抑制外层 Tcl 替换；expr 自己按表达式规则处理变量，能保留短路语义并更高效地编译。"
+    }
+  ],
+  "cheatsheet": [
+    "set name value：保存；set name：读取",
+    "$name：变量替换",
+    "expr {$a * $b + 2}：计算表达式",
+    "incr n ?增量?：更新整数",
+    "double($n) / $count：需要小数的除法",
+    "format %.2f $value：格式化两位小数"
+  ],
+  "next": "变量替换、方括号求值、花括号保护表达式已经出现。下一节把这三种符号的职责拆开看清。",
+  "view": "variables",
+  "diagram": "assets/diagrams/02.svg"
+}

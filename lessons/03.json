@@ -1,0 +1,179 @@
+{
+  "id": 3,
+  "unit": 1,
+  "title": "Tcl 的三种重要符号",
+  "summary": "看清双引号、花括号和方括号分别怎样组织一条消息。",
+  "minutes": 35,
+  "prerequisites": [
+    "01–02：puts、set、$变量名和 expr。"
+  ],
+  "objectives": [
+    "区分双引号分组与花括号分组",
+    "判断变量替换、命令替换与反斜杠替换发生的位置",
+    "使用方括号取得命令的返回值",
+    "解释替换结果为什么不会再按空格拆成多个参数"
+  ],
+  "problem": "要给姓名为“林 雨”的报名者发送消息：“林 雨，你的材料费为 36 元”。姓名包含空格，金额需要计算，还想打印一段原样的模板。三件事看起来都像文字，实际需要不同的分组和替换规则。",
+  "steps": [
+    {
+      "title": "双引号：组成一个词，允许替换",
+      "body": "\"姓名：$name\" 是一个参数，空格不会把它拆开；其中 $name 发生变量替换，[命令] 发生命令替换，\\n 这样的反斜杠序列也会被处理。双引号解决“这些字符属于同一个词”，不承诺保留每个字符原样。"
+    },
+    {
+      "title": "花括号：组成一个词，交给命令再解释",
+      "body": "{$name [expr {2+3}]} 作为一个词传入，外层 Tcl 不做变量或命令替换，也不做通常的反斜杠替换。重要例外是反斜杠紧接换行及其后的缩进会折叠成一个空格。花括号可嵌套并需配对。expr、if 等命令收到花括号里的文字后，会按自己的规则求值；因此 expr {$price * 2} 仍能读取 price。"
+    },
+    {
+      "title": "方括号：先执行，放入返回值",
+      "body": "[expr {$price * $quantity}] 先执行一个 Tcl 命令，把返回值放到所在位置。它不是分组引号，也不是列表索引写法；列表索引使用 lindex。嵌套方括号按依赖从里面求值。puts 的输出和命令返回值是两件事：puts 返回空字符串，不能拿 [puts ...] 当作刚打印的文字。"
+    },
+    {
+      "title": "替换结果不会再分词",
+      "body": "Tcl 首先确定词边界，再把变量和命令的结果填入各个词中。name 的值是“林 雨”时，puts $name 仍把整段值当作一个参数。通常不会把值再次当 Tcl 源码执行；不要因此使用 eval 拼接命令。命令的参数值仍可能被该命令按特定语法解析，比如 expr 解析表达式、lindex 解析列表。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "同一段文字，两种分组",
+      "code": "set name \"林 雨\"\nputs \"欢迎：$name\"\nputs {欢迎：$name}",
+      "expected": "欢迎：林 雨\n欢迎：$name"
+    },
+    {
+      "title": "计算结果嵌入消息",
+      "code": "set name \"林 雨\"\nset price 12\nset quantity 3\nputs \"$name，你的材料费为 [expr {$price * $quantity}] 元\"",
+      "expected": "林 雨，你的材料费为 36 元"
+    },
+    {
+      "title": "换行序列与原样模板",
+      "code": "puts \"第一行\\n第二行\"\nputs {第一行\\n第二行}\nset heading \"开放 日\"\nputs $heading",
+      "expected": "第一行\n第二行\n第一行\\n第二行\n开放 日"
+    },
+    {
+      "title": "花括号里的续行例外",
+      "code": "set text {第一段\\\n    第二段}\nputs $text",
+      "expected": "第一段 第二段"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "同时保存模板和成品",
+      "prompt": "保留 name=\"陈 晨\"。template 应是原样文字“你好，$name”，message 应是替换后的“你好，陈 晨”。输出 template，再输出 message。",
+      "starter": "set name \"陈 晨\"\nset template \"请补全\"\nset message \"请补全\"\nputs $template\nputs $message",
+      "solution": "set name \"陈 晨\"\nset template {你好，$name}\nset message \"你好，$name\"\nputs $template\nputs $message",
+      "expected": "你好，$name\n你好，陈 晨",
+      "hints": [
+        "template 要保留美元符号，选择抑制替换的分组。",
+        "message 用双引号分组，允许 $name 替换。"
+      ],
+      "checks": [
+        {
+          "label": "模板保留变量标记",
+          "script": "expr {$template eq {你好，$name}}"
+        },
+        {
+          "label": "成品包含姓名和空格",
+          "script": "expr {$name eq \"陈 晨\" && $message eq \"你好，陈 晨\"}"
+        }
+      ]
+    },
+    {
+      "title": "把运算嵌入通知",
+      "prompt": "price=9、quantity=4；把“总计 36 元”保存到 message，把文字“[expr {9 * 4}]”原样保存到 formula。输出 message 和 formula。",
+      "starter": "set price 9\nset quantity 4\nset message \"总计 0 元\"\nset formula \"请补全\"\nputs $message\nputs $formula",
+      "solution": "set price 9\nset quantity 4\nset message \"总计 [expr {$price * $quantity}] 元\"\nset formula {[expr {9 * 4}]}\nputs $message\nputs $formula",
+      "expected": "总计 36 元\n[expr {9 * 4}]",
+      "hints": [
+        "双引号中允许 [expr {...}] 求值。",
+        "formula 的最外层花括号保护整个表达式，包括方括号。"
+      ],
+      "checks": [
+        {
+          "label": "运算结果进入消息",
+          "script": "expr {$price == 9 && $quantity == 4 && $message eq \"总计 36 元\"}"
+        },
+        {
+          "label": "公式是文字而非计算结果",
+          "script": "expr {$formula eq {[expr {9 * 4}]}}"
+        }
+      ]
+    },
+    {
+      "title": "保留用户文字，不把它当代码",
+      "prompt": "raw 的值是“会议 [上午] $room”。请把 report 保存为“备注：会议 [上午] $room”，literal 保存为原样的“备注：$raw”。不要执行上午命令，也不要创建 room 变量。输出 report、literal。",
+      "starter": "set raw {会议 [上午] $room}\nset report {请补全}\nset literal {请补全}\nputs $report\nputs $literal",
+      "solution": "set raw {会议 [上午] $room}\nset report \"备注：$raw\"\nset literal {备注：$raw}\nputs $report\nputs $literal",
+      "expected": "备注：会议 [上午] $room\n备注：$raw",
+      "hints": [
+        "先用花括号保存 raw，避免初次读取时替换。",
+        "$raw 的值不会再次扫描其中的方括号或美元符号。"
+      ],
+      "checks": [
+        {
+          "label": "来自变量的标记未被再次执行",
+          "script": "expr {$report eq {备注：会议 [上午] $room}}"
+        },
+        {
+          "label": "保留第二种原样模板",
+          "script": "expr {$literal eq {备注：$raw} && ![info exists room]}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "把所有文字都用花括号包住，期待 $name 自动变化",
+      "fix": "外层 Tcl 不替换花括号里的变量。需要消息插值时用双引号；要交给 expr 或 if 求值时，花括号是合适的。"
+    },
+    {
+      "problem": "set msg [puts \"你好\"] 后发现 msg 是空字符串",
+      "fix": "puts 把内容写到输出，不把它作为返回值。直接 set msg \"你好\"，再 puts $msg。"
+    },
+    {
+      "problem": "手动把含方括号的用户文字拼成源代码",
+      "fix": "使用变量作为数据传给命令，避免 eval；变量值通常不会被再次当源码扫描。需要原样输入时先用花括号保护。"
+    }
+  ],
+  "exploration": "在例子一中把 name 改成“顾 [甲]”。赋值时用花括号保护这个值，然后比较 puts $name 和 puts {$name}。再把例子三第一条的 \\n 改成 \\t，观察输出如何改变。",
+  "quiz": [
+    {
+      "question": "set n 7 后执行 puts {$n} 会输出什么？",
+      "options": [
+        "7",
+        "$n",
+        "空字符串"
+      ],
+      "answer": 1,
+      "explanation": "花括号抑制外层 Tcl 的变量替换，所以 puts 收到字面文字 $n。"
+    },
+    {
+      "question": "set name {林 雨} 后，puts $name 会怎样？",
+      "options": [
+        "因为空格分成两个参数而报错",
+        "输出完整的林 雨",
+        "执行名为林的命令"
+      ],
+      "answer": 1,
+      "explanation": "词边界在替换之前确定。变量替换得到的空格不会让这个词再分裂。"
+    },
+    {
+      "question": "哪种说法准确？",
+      "options": [
+        "花括号内部绝不会处理反斜杠",
+        "花括号抑制通常替换，但反斜杠紧接换行会折叠",
+        "方括号只是另一种字符串引号"
+      ],
+      "answer": 1,
+      "explanation": "反斜杠换行是花括号分组的重要例外；方括号则触发命令替换。"
+    }
+  ],
+  "cheatsheet": [
+    "\"...\"：一个词，允许变量、命令和反斜杠替换",
+    "{...}：一个词，抑制通常替换；反斜杠换行例外",
+    "[command ...]：执行命令，用返回值替换",
+    "$name：取变量值；替换结果通常不再按源码扫描",
+    "expr {...}：由表达式求值器读取表达式里的变量"
+  ],
+  "next": "这些符号能保护 if 的条件与命令体。下一节用条件决定哪些消息需要发出。",
+  "view": "substitution",
+  "diagram": "assets/diagrams/03.svg"
+}

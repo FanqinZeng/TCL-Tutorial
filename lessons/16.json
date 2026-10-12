@@ -1,0 +1,163 @@
+{
+  "id": 16,
+  "unit": 6,
+  "title": "Tcl 与 EDA 工具：先分清谁提供了命令",
+  "summary": "以自己编写的设计记录模型练习筛选，区分语言命令与工具扩展命令。",
+  "minutes": 40,
+  "prerequisites": [
+    "列表与字典",
+    "过程与 namespace",
+    "字符串匹配"
+  ],
+  "objectives": [
+    "区分 Tcl 核心命令与宿主工具命令",
+    "解释工具为什么能提供额外的 Tcl 命令",
+    "用自写模型按名称与字段筛选记录",
+    "说明教学列表与真实工具对象集合的差别",
+    "确认浏览器没有连接商业 EDA 软件"
+  ],
+  "problem": "在设计自动化教程中常看到 get_cells、report_timing 一类命令。在普通 tclsh 或本网站运行它们却提示“invalid command name”。这不是 Tcl 学错了，而是这些命令由具体工具提供。我们先用透明、很小的自写模型练习筛选思路。",
+  "steps": [
+    {
+      "title": "Tcl 是语言，EDA 工具提供业务命令",
+      "body": "set、if、foreach、dict、proc 是 Tcl 命令。宿主软件可以注册额外命令，把设计数据库中的对象交给 Tcl 操作。许多工具采用 Tcl 来组合查询、条件和报告；同名工具命令的参数及返回类型仍须查对应工具文档。"
+    },
+    {
+      "title": "普通解释器不自带设计数据库",
+      "body": "本网站只运行真实 Tcl，不启动综合、布局布线或时序工具，也不接入私人服务器。get_cells 不是 Tcl 核心命令。我们将自己定义 ::demoeda::get_cells，每一行实现都可见，它查询的是原创教学字典列表。"
+    },
+    {
+      "title": "教学记录就是字段和值",
+      "body": "本节记录包含 name、kind、area。area 是随意设置的教学面积单位，没有工艺含义。用 dict get 访问字段，string match 用 glob 模式匹配名称；* 表示任意长度字符。把筛选条件放在过程参数中，方便使用新数据验证。"
+    },
+    {
+      "title": "不能把教学模型的行为套到真实工具",
+      "body": "这里返回标准 Tcl 列表，因此可以 foreach 与 llength。真实工具可能返回专有 collection、对象句柄或其他类型，常有专门的遍历命令。工具名、属性单位、查询语法和空结果语义都需要在使用该工具前确认。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "普通 Tcl 中哪些命令存在",
+      "code": "puts \"Tcl 的 dict：[expr {[llength [info commands dict]] > 0}]\"\nputs \"工具的 get_cells：[expr {[llength [info commands get_cells]] > 0}]\"\nif {[catch {get_cells *} message]} {\n    puts \"当前没有 EDA 工具命令；先加载教学模型\"\n}",
+      "expected": "Tcl 的 dict：1\n工具的 get_cells：0\n当前没有 EDA 工具命令；先加载教学模型"
+    },
+    {
+      "title": "用字典记录演示筛选",
+      "code": "set cells [list     [dict create name U_AND kind AND2 area 1.2]     [dict create name U_BUF kind BUF area 0.5]     [dict create name CLK_BUF kind BUF area 0.8]]\nforeach cell $cells {\n    if {[dict get $cell kind] eq \"BUF\"} {\n        puts \"[dict get $cell name]：[dict get $cell area]\"\n    }\n}",
+      "expected": "U_BUF：0.5\nCLK_BUF：0.8"
+    },
+    {
+      "title": "可见实现的教学工具命令",
+      "code": "namespace eval demoeda {\n    variable cells [list         [dict create name U_AND kind AND2]         [dict create name U_BUF kind BUF]         [dict create name CLK_BUF kind BUF]]\n    proc get_cells {pattern} {\n        variable cells\n        set selected {}\n        foreach cell $cells {\n            if {[string match $pattern [dict get $cell name]]} {\n                lappend selected [dict get $cell name]\n            }\n        }\n        return $selected\n    }\n}\nputs \"教学查询：[::demoeda::get_cells U_*]\"\nputs \"无匹配数量：[llength [::demoeda::get_cells X_*]]\"",
+      "expected": "教学查询：U_AND U_BUF\n无匹配数量：0"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "按名称筛选教学列表",
+      "prompt": "定义 matchNames {names pattern}，按 string match 保留匹配名称，维持原顺序。输出以 U_ 开头的名称。",
+      "starter": "proc matchNames {names pattern} {\n    # 返回匹配名称列表\n}\nputs [matchNames {U_AND CLK_BUF U_BUF} U_*]",
+      "solution": "proc matchNames {names pattern} {\n    set result {}\n    foreach name $names {\n        if {[string match $pattern $name]} { lappend result $name }\n    }\n    return $result\n}\nputs [matchNames {U_AND CLK_BUF U_BUF} U_*]",
+      "expected": "U_AND U_BUF",
+      "hints": [
+        "string match 的顺序是 pattern、string。",
+        "构建空 result，foreach 时只追加匹配项。"
+      ],
+      "checks": [
+        {
+          "label": "新名称与不同模式",
+          "script": "expr {[matchNames {top/U1 top/U2 clock/U1} top/*] eq {top/U1 top/U2} && [matchNames {A B C} B] eq {B}}"
+        },
+        {
+          "label": "空结果边界",
+          "script": "expr {[matchNames {} *] eq {} && [matchNames {A B} X*] eq {}}"
+        }
+      ]
+    },
+    {
+      "title": "按单元类型筛选",
+      "prompt": "定义 namesOfKind {records kind}。records 是含 name、kind、area 的字典列表。返回 kind 字段精确等于参数的单元名称；不要用名称推测类型。",
+      "starter": "proc namesOfKind {records kind} {\n    # 检查字段，不要猜名字\n}\nset cells [list     [dict create name U1 kind BUF area 0.5]     [dict create name U2 kind AND2 area 1.2]     [dict create name U3 kind BUF area 0.8]]\nputs [namesOfKind $cells BUF]",
+      "solution": "proc namesOfKind {records kind} {\n    set result {}\n    foreach cell $records {\n        if {[dict get $cell kind] eq $kind} {\n            lappend result [dict get $cell name]\n        }\n    }\n    return $result\n}\nset cells [list     [dict create name U1 kind BUF area 0.5]     [dict create name U2 kind AND2 area 1.2]     [dict create name U3 kind BUF area 0.8]]\nputs [namesOfKind $cells BUF]",
+      "expected": "U1 U3",
+      "hints": [
+        "dict get $cell kind 读取类型；eq 做字符串精确比较。",
+        "选择记录后，追加该记录的 name 字段。"
+      ],
+      "checks": [
+        {
+          "label": "改变类型条件",
+          "script": "expr {[namesOfKind $cells AND2] eq {U2} && [namesOfKind $cells DFF] eq {}}"
+        },
+        {
+          "label": "不能根据名称写死分类",
+          "script": "set r [list [dict create name BUF_IN_NAME kind DFF area 2] [dict create name X kind BUF area 1]]; expr {[namesOfKind $r BUF] eq {X} && [namesOfKind {} BUF] eq {}}"
+        }
+      ]
+    },
+    {
+      "title": "组合名称与面积条件",
+      "prompt": "定义 selectCells {records pattern maxArea}，返回名称匹配 pattern 且 area <= maxArea 的原字典记录列表。数据格式保证完整且面积为非负有限数。输出筛选数量与名称。",
+      "starter": "proc selectCells {records pattern maxArea} {\n    # 两个条件必须同时成立\n}\nset cells [list     [dict create name U_A kind AND2 area 1.2]     [dict create name U_B kind BUF area 0.5]     [dict create name CLK_B kind BUF area 0.4]]\nset selected [selectCells $cells U_* 1.0]\nputs \"教学筛选：[llength $selected] 个\"\nforeach cell $selected { puts [dict get $cell name] }",
+      "solution": "proc selectCells {records pattern maxArea} {\n    set result {}\n    foreach cell $records {\n        if {[string match $pattern [dict get $cell name]] && [dict get $cell area] <= $maxArea} {\n            lappend result $cell\n        }\n    }\n    return $result\n}\nset cells [list     [dict create name U_A kind AND2 area 1.2]     [dict create name U_B kind BUF area 0.5]     [dict create name CLK_B kind BUF area 0.4]]\nset selected [selectCells $cells U_* 1.0]\nputs \"教学筛选：[llength $selected] 个\"\nforeach cell $selected { puts [dict get $cell name] }",
+      "expected": "教学筛选：1 个\nU_B",
+      "hints": [
+        "字符串匹配与数值比较用 && 连接。",
+        "lappend 原 cell，而不是仅追加 name，才能保留后续需要的字段。"
+      ],
+      "checks": [
+        {
+          "label": "阈值边界与其他模式",
+          "script": "set a [selectCells $cells U_* 0.5]; set b [selectCells $cells CLK* 0.5]; expr {[llength $a] == 1 && [dict get [lindex $a 0] name] eq \"U_B\" && [dict get [lindex $b 0] name] eq \"CLK_B\"}"
+        },
+        {
+          "label": "保留原记录并支持新数据",
+          "script": "set r [list [dict create name X kind DFF area 0.2]]; expr {[selectCells $r * 0.2] eq $r && [selectCells $r * 0.1] eq {} && [selectCells {} * 9] eq {}}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "在普通 tclsh 或浏览器里直接运行 get_cells，认为所有 EDA 命令都是 Tcl 核心。",
+      "fix": "确认宿主环境与命令来源。本课的 ::demoeda::get_cells 是自己编写的教学过程；真实工具需要它的可用环境。"
+    },
+    {
+      "problem": "把真实工具返回的 collection 当普通列表，直接使用 llength。",
+      "fix": "查询该工具的对象与集合文档。这里只用自己创建的标准 Tcl 列表，不能推断所有工具也如此。"
+    }
+  ],
+  "exploration": "把例子 3 的模式 U_* 改成 *BUF，然后新增一条完全不同名称的记录。判断结果应该如何改变，再运行核对。所有记录仍是教学数据，不代表真实网表。",
+  "quiz": [
+    {
+      "question": "get_cells 的来源通常是什么？",
+      "options": [
+        "Tcl 语言规范必带命令",
+        "具体 EDA 工具提供的扩展命令",
+        "任意网页都自动提供"
+      ],
+      "answer": 1,
+      "explanation": "工具将自己的设计数据库能力注册到 Tcl；普通解释器不自带。"
+    },
+    {
+      "question": "本课程 demoeda 返回普通 Tcl 列表，可以推断真实工具也如此吗？",
+      "options": [
+        "可以",
+        "不能，需查工具文档",
+        "只要名字相同就可以"
+      ],
+      "answer": 1,
+      "explanation": "工具可能使用专有集合与遍历接口，本模型只演示筛选思路。"
+    }
+  ],
+  "cheatsheet": [
+    "语言命令：set、if、foreach、dict、proc",
+    "教学命令：::demoeda::get_cells（源代码在本节例子）",
+    "glob 匹配：string match U_* $name",
+    "字段读取：dict get $cell kind",
+    "本网站不连接商业 EDA；教学面积单位没有工艺意义。"
+  ],
+  "next": "第 17 节用简化教学时序数据理解周期、路径延迟与 slack，并筛选需要关注的路径。",
+  "view": "record",
+  "diagram": "assets/diagrams/16.svg"
+}

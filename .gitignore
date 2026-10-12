@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+.preview/
+tests/native-results.json
+tests/runtime-results.json
+tests/screenshots/
+media-work/
+
+*.mp4.sb-*

@@ -1,0 +1,163 @@
+{
+  "id": 13,
+  "unit": 5,
+  "title": "作用域与命名空间：给工具安排各自的位置",
+  "summary": "区分局部变量、全局变量和命名空间变量，减少同名工具之间的冲突。",
+  "minutes": 40,
+  "prerequisites": [
+    "过程与局部变量",
+    "字典",
+    "错误处理"
+  ],
+  "objectives": [
+    "解释过程中的默认局部作用域",
+    "用 global 明确访问全局变量",
+    "用 namespace eval 组织命令",
+    "用 variable 绑定命名空间状态",
+    "避免工具互相覆盖同名命令"
+  ],
+  "problem": "活动费用和实验费用都需要一个叫 fee 的计算过程。如果放在同一个脚本顶层，后定义的 fee 会覆盖前一个。把它们放进不同命名空间，可以保留相同的短名字；共享计数器也要明确放在哪个空间里。",
+  "steps": [
+    {
+      "title": "默认局部变量最容易推理",
+      "body": "调用过程时建立局部变量，过程返回后通常释放它们。外面的同名变量不自动参与计算。参数与返回值适合大多数独立计算；只有需要跨调用保存状态时才考虑共享变量。"
+    },
+    {
+      "title": "global 明确连接全局状态",
+      "body": "过程体里 global visits 让 visits 这个局部名字绑定到全局的 ::visits。它不是把所有局部变量都变成全局。共享状态应少而明确，否则读者很难知道哪次调用修改了它。"
+    },
+    {
+      "title": "namespace 为命令和变量分组",
+      "body": "namespace eval travel {...} 在 ::travel 空间建立命令和变量。用 ::travel::fee 完整名称调用，可与 ::food::fee 共存。命名空间不像对象，不会自动产生多份独立状态。"
+    },
+    {
+      "title": "variable 绑定当前命名空间的变量",
+      "body": "命名空间里的过程使用 variable total 来访问 ::ledger::total。初始化在 namespace eval 中做一次；若在每次调用里 variable total 0，可能重新设为 0，破坏累积。本节不引入 upvar 或复杂的名字解析。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "局部变量与明确的全局计数",
+      "code": "set visits 0\nproc visit {} {\n    global visits\n    incr visits\n    set note \"本次调用的局部备注\"\n    return $visits\n}\nputs [visit]\nputs [visit]\nputs \"全局 visits：$visits\"",
+      "expected": "1\n2\n全局 visits：2"
+    },
+    {
+      "title": "两个同名费用工具共存",
+      "code": "namespace eval travel {\n    proc fee {people} { return [expr {$people * 12}] }\n}\nnamespace eval food {\n    proc fee {people} { return [expr {$people * 18}] }\n}\nputs \"交通：[::travel::fee 3]\"\nputs \"餐食：[::food::fee 3]\"",
+      "expected": "交通：36\n餐食：54"
+    },
+    {
+      "title": "命名空间状态跨调用保留",
+      "code": "set total 999\nnamespace eval ledger {\n    variable total 0\n    proc add {amount} {\n        variable total\n        set total [expr {$total + $amount}]\n        return $total\n    }\n}\nputs \"累计：[::ledger::add 12]\"\nputs \"累计：[::ledger::add 8]\"\nputs \"外部 total：$total\"",
+      "expected": "累计：12\n累计：20\n外部 total：999"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "明确的运行次数",
+      "prompt": "顶层 runCount 从 0 开始。定义 recordRun，无参数，每调用一次把全局 runCount 加一并返回。最后输出两次调用结果。",
+      "starter": "set runCount 0\nproc recordRun {} {\n    # 明确绑定全局计数\n}\nputs [recordRun]\nputs [recordRun]",
+      "solution": "set runCount 0\nproc recordRun {} {\n    global runCount\n    return [incr runCount]\n}\nputs [recordRun]\nputs [recordRun]",
+      "expected": "1\n2",
+      "hints": [
+        "过程里声明 global runCount。",
+        "incr 的返回值就是更新后的整数，可直接 return。"
+      ],
+      "checks": [
+        {
+          "label": "不同起点也累计",
+          "script": "set runCount 10; expr {[recordRun] == 11 && $runCount == 11}"
+        },
+        {
+          "label": "零起点多次调用",
+          "script": "set runCount 0; expr {[recordRun] == 1 && [recordRun] == 2 && [recordRun] == 3}"
+        }
+      ]
+    },
+    {
+      "title": "各自独立的同名工具",
+      "prompt": "在 ::bus 中定义 fee {n} 为 n * 8，在 ::snack 中定义 fee {n} 为 n * 5。保留调用，输出各自结果。",
+      "starter": "namespace eval bus {\n    # 定义 fee\n}\nnamespace eval snack {\n    # 定义 fee\n}\nputs [::bus::fee 4]\nputs [::snack::fee 4]",
+      "solution": "namespace eval bus {\n    proc fee {n} { return [expr {$n * 8}] }\n}\nnamespace eval snack {\n    proc fee {n} { return [expr {$n * 5}] }\n}\nputs [::bus::fee 4]\nputs [::snack::fee 4]",
+      "expected": "32\n20",
+      "hints": [
+        "namespace eval 里定义的 proc 属于该命名空间。",
+        "用完整名称 ::bus::fee 与 ::snack::fee 调用。"
+      ],
+      "checks": [
+        {
+          "label": "同名命令没有互相覆盖",
+          "script": "expr {[::bus::fee 2] == 16 && [::snack::fee 2] == 10}"
+        },
+        {
+          "label": "零人数边界",
+          "script": "expr {[::bus::fee 0] == 0 && [::snack::fee 0] == 0}"
+        }
+      ]
+    },
+    {
+      "title": "可重置的累计账本",
+      "prompt": "定义 ::budget::add {amount} 返回累加后的值，::budget::get 返回当前值，::budget::reset 清零并返回 0。状态变量 ::budget::total 初始化为 0；外部 total = 500 必须保持不变。",
+      "starter": "set total 500\nnamespace eval budget {\n    variable total 0\n    # 定义 add、get 和 reset\n}\nputs [::budget::add 6]\nputs [::budget::add 9]\nputs \"外部：$total\"\nputs \"清零：[::budget::reset]\"",
+      "solution": "set total 500\nnamespace eval budget {\n    variable total 0\n    proc add {amount} {\n        variable total\n        set total [expr {$total + $amount}]\n        return $total\n    }\n    proc get {} {\n        variable total\n        return $total\n    }\n    proc reset {} {\n        variable total\n        set total 0\n        return $total\n    }\n}\nputs [::budget::add 6]\nputs [::budget::add 9]\nputs \"外部：$total\"\nputs \"清零：[::budget::reset]\"",
+      "expected": "6\n15\n外部：500\n清零：0",
+      "hints": [
+        "初始化放在 namespace eval；过程只用 variable total 绑定。",
+        "get 不修改，reset 明确 set total 0，add 根据旧值计算。"
+      ],
+      "checks": [
+        {
+          "label": "共享状态累积并可读",
+          "script": "::budget::reset; expr {[::budget::add 2.5] == 2.5 && [::budget::add 4.5] == 7 && [::budget::get] == 7}"
+        },
+        {
+          "label": "重置且外部同名变量不变",
+          "script": "expr {[::budget::reset] == 0 && [::budget::get] == 0 && $total == 500}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "在命名空间过程里 set total，以为会自动改共享状态。",
+      "fix": "先声明 variable total，否则默认创建或读取局部 total。共享变量应在命名空间中初始化。"
+    },
+    {
+      "problem": "把 global total 放进 ::ledger 的过程，想访问 ::ledger::total。",
+      "fix": "global 绑定的是顶层 ::total。访问当前命名空间状态用 variable total。"
+    }
+  ],
+  "exploration": "给例子 2 再加 ::ticket::fee {people}，每人 30 元，观察三个 fee 互不覆盖。然后把例子 3 过程里的 variable total 去掉，读错误信息，解释为什么局部 total 尚未存在。",
+  "quiz": [
+    {
+      "question": "在 ::ledger 的过程里 global total 绑定到哪里？",
+      "options": [
+        "::ledger::total",
+        "::total",
+        "每次新建的局部 total"
+      ],
+      "answer": 1,
+      "explanation": "global 明确访问全局命名空间；命名空间变量使用 variable。"
+    },
+    {
+      "question": "命名空间里的计数器最合适在哪里初始化？",
+      "options": [
+        "每次 add 时初始化为 0",
+        "namespace eval 中一次初始化",
+        "每次 puts 之前初始化"
+      ],
+      "answer": 1,
+      "explanation": "初始化与更新职责分开，才能保留跨调用累计状态。"
+    }
+  ],
+  "cheatsheet": [
+    "组织命令：namespace eval tools { proc fee {n} {...} }",
+    "完整调用名：::tools::fee 3",
+    "全局变量绑定：global visits",
+    "命名空间变量绑定：variable total",
+    "优先参数与返回值；需要持久状态时才明确共享。"
+  ],
+  "next": "第 14 节把不同工具移到独立 .tcl 文件，并用入口参数与配置选择报告内容。",
+  "view": "scope",
+  "diagram": "assets/diagrams/13.svg"
+}

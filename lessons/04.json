@@ -1,0 +1,158 @@
+{
+  "id": 4,
+  "unit": 2,
+  "title": "条件判断",
+  "summary": "按预算和报名状态选择合适的处理方式。",
+  "minutes": 30,
+  "prerequisites": [
+    "01–03：输出、变量、表达式与分组规则。"
+  ],
+  "objectives": [
+    "编写 if / elseif / else 分支",
+    "用数值比较检查预算",
+    "用 eq / ne 比较文字状态",
+    "用 && 和 || 组合条件",
+    "检查相等边界与不满足条件的情况"
+  ],
+  "problem": "活动有三种材料包：基础包 30 元、标准包 60 元、扩展包 90 元。预算是 75 元时，选择标准包。预算不足 30 元时应提示暂缓。程序需要按清楚的规则作选择，而不是把所有方案都打印出来。",
+  "steps": [
+    {
+      "title": "先判断最优先的条件",
+      "body": "if {$budget >= 90} { ... } elseif {$budget >= 60} { ... } else { ... } 按顺序检查条件，只执行第一个成立的分支。条件中比较数字使用 <、<=、>、>=、==、!=。花括号保护条件，if 通过表达式求值器读取变量。"
+    },
+    {
+      "title": "把完整条件链写在一起",
+      "body": "推荐把 } elseif { 和 } else { 写在同一行。Tcl 的换行通常结束命令；单独放在下一行的 else 会被当作新的命令，除非使用续行等写法。代码体由花括号包住，直到选中分支才执行，不会提前输出。"
+    },
+    {
+      "title": "文字和数字采用不同意图的比较",
+      "body": "状态字符串用 eq（相同）和 ne（不同），例如 $status eq \"confirmed\"。== 更适合表达数值比较；它会尝试数字语义，因此 \"01\" == \"1\" 为真而 \"01\" eq \"1\" 为假。文字身份码、编号要保留原样意义。"
+    },
+    {
+      "title": "测试边界与组合条件",
+      "body": "预算恰好 60 元是否包含在标准包？>= 表示包含，> 则不包含。&& 要求两侧都成立，|| 只要求一侧成立。在花括号表达式里它们短路求值；可以先检查条件再决定是否执行后半部分。对零数量、负预算也应明确规则。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "根据预算选择材料包",
+      "code": "set budget 75\nif {$budget >= 90} {\n    set plan \"扩展包\"\n} elseif {$budget >= 60} {\n    set plan \"标准包\"\n} elseif {$budget >= 30} {\n    set plan \"基础包\"\n} else {\n    set plan \"暂缓采购\"\n}\nputs $plan",
+      "expected": "标准包"
+    },
+    {
+      "title": "报名状态与人数一起检查",
+      "code": "set status \"confirmed\"\nset people 2\nif {$status eq \"confirmed\" && $people > 0} {\n    puts \"可以制作名牌\"\n} else {\n    puts \"等待有效报名\"\n}",
+      "expected": "可以制作名牌"
+    },
+    {
+      "title": "编号文字与数值意义",
+      "code": "set a \"01\"\nset b \"1\"\nputs [expr {$a eq $b}]\nputs [expr {$a == $b}]\nset remaining 0\nif {$remaining == 0} {puts \"名额已满\"}",
+      "expected": "0\n1\n名额已满"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "判断是否免运费",
+      "prompt": "subtotal=80、threshold=80；金额达到或超过门槛时 shipping=0，否则 shipping=6。输出“运费：0”。",
+      "starter": "set subtotal 80\nset threshold 80\nset shipping 6\n# 添加条件判断\nputs \"运费：$shipping\"",
+      "solution": "set subtotal 80\nset threshold 80\nif {$subtotal >= $threshold} {\n    set shipping 0\n} else {\n    set shipping 6\n}\nputs \"运费：$shipping\"",
+      "expected": "运费：0",
+      "hints": [
+        "恰好达到门槛也免运费，因此比较符号包含等号。",
+        "两条分支都设置 shipping，便于修改 subtotal 后重新运行。"
+      ],
+      "checks": [
+        {
+          "label": "免运费边界正确",
+          "script": "expr {$subtotal == 80 && $threshold == 80 && $shipping == 0}"
+        }
+      ]
+    },
+    {
+      "title": "给测量值分级",
+      "prompt": "value=35；低于 10 为“偏低”，10 到 30（含端点）为“正常”，大于 30 为“偏高”。把结果保存为 label 并输出。",
+      "starter": "set value 35\nset label \"待判断\"\n# 按低、正常、高依次判断\nputs $label",
+      "solution": "set value 35\nif {$value < 10} {\n    set label \"偏低\"\n} elseif {$value <= 30} {\n    set label \"正常\"\n} else {\n    set label \"偏高\"\n}\nputs $label",
+      "expected": "偏高",
+      "hints": [
+        "第一个分支排除了 <10；第二个只需检查 <=30。",
+        "else 接收剩余的大于 30 的输入。"
+      ],
+      "checks": [
+        {
+          "label": "高值分支结果",
+          "script": "expr {$value == 35 && $label eq \"偏高\"}"
+        }
+      ]
+    },
+    {
+      "title": "有效报名才生成提醒",
+      "prompt": "status=\"pending\"、people=0；只有 status 为 confirmed 且 people>0 时 action 为“制作名牌”，其他情况为“核实报名”。另有 code=\"01\"，仅当它与文字“1”完全相同才把 sameCode 设为 1。输出 action 和 sameCode。",
+      "starter": "set status \"pending\"\nset people 0\nset code \"01\"\nset action \"待判断\"\nset sameCode 1\n# 判断报名与编号\nputs $action\nputs $sameCode",
+      "solution": "set status \"pending\"\nset people 0\nset code \"01\"\nif {$status eq \"confirmed\" && $people > 0} {\n    set action \"制作名牌\"\n} else {\n    set action \"核实报名\"\n}\nset sameCode [expr {$code eq \"1\"}]\nputs $action\nputs $sameCode",
+      "expected": "核实报名\n0",
+      "hints": [
+        "报名的两个要求用 && 连接。",
+        "编号是文字，eq 保留前导零的区别。"
+      ],
+      "checks": [
+        {
+          "label": "无效报名转入核实分支",
+          "script": "expr {$status eq \"pending\" && $people == 0 && $action eq \"核实报名\"}"
+        },
+        {
+          "label": "前导零编号没有被当成数值",
+          "script": "expr {$code eq \"01\" && $sameCode == 0}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "else 单独写在下一行，提示 invalid command name",
+      "fix": "前一行已经结束 if 命令。使用 } else { 连接，elseif 同理。"
+    },
+    {
+      "problem": "使用 == 比较编号，误把 01 和 1 看作一样",
+      "fix": "数值比较会忽略这种表示差别。身份编号、状态、姓名使用 eq / ne。"
+    },
+    {
+      "problem": "先写 budget >= 30，后写 budget >= 90",
+      "fix": "条件链只选第一个成立的分支，高预算提前进入基础包。按优先级从更严格的条件开始，或写互不重叠的区间。"
+    }
+  ],
+  "exploration": "把例子一 budget 依次改成 29、30、59、60、89、90，记录每个结果。把练习二 value 改成 10 和 30，检查两个端点都得到“正常”。",
+  "quiz": [
+    {
+      "question": "预算恰好达到免运费门槛，应该用哪个条件？",
+      "options": [
+        "$subtotal > $threshold",
+        "$subtotal >= $threshold",
+        "$subtotal ne $threshold"
+      ],
+      "answer": 1,
+      "explanation": ">= 包含相等的边界，> 不包含。"
+    },
+    {
+      "question": "if 的第一条条件成立后，后面的 elseif 会怎样？",
+      "options": [
+        "仍全部执行",
+        "只执行最后一个",
+        "不再执行其他分支"
+      ],
+      "answer": 2,
+      "explanation": "if 条件链只选择第一个成立的分支；若都不成立才执行 else。"
+    }
+  ],
+  "cheatsheet": [
+    "if {条件} {命令体} elseif {条件} {命令体} else {命令体}",
+    "数字比较：< <= > >= == !=",
+    "文字比较：eq ne",
+    "&&：同时成立；||：至少一个成立",
+    "条件和命令体通常用花括号分组",
+    "把相等、零值与不满足条件也作为测试输入"
+  ],
+  "next": "现在能处理一条数据。下一节把同样的规则用于整组测量记录。",
+  "view": "branches",
+  "diagram": "assets/diagrams/04.svg"
+}

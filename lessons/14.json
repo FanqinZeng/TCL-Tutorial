@@ -1,0 +1,195 @@
+{
+  "id": 14,
+  "unit": 5,
+  "title": "脚本组织与参数：用同一套工具生成不同报告",
+  "summary": "通过 source 加载工具和可信配置，通过 argc 与 argv 选择报告输入。",
+  "minutes": 45,
+  "prerequisites": [
+    "过程与命名空间",
+    "文件读写",
+    "错误处理",
+    "字典"
+  ],
+  "objectives": [
+    "用 source 加载另一份 Tcl 脚本",
+    "读取并校验 argc 与 argv",
+    "用列表而非空格拼接保存参数",
+    "从可信 Tcl 配置中取得字典",
+    "说明入口、配置和工具文件的依赖"
+  ],
+  "problem": "每天写一份报告，只是标题、输入文件和小数位数不同。不必为每一天复制整套算法。把工具写在一份脚本里，配置写在另一份文件里，入口脚本读取参数决定这次处理谁。",
+  "steps": [
+    {
+      "title": "source 真正执行另一份脚本",
+      "body": "source helpers.tcl 在当前解释器、当前调用上下文中执行文件。文件可以定义过程，也可以返回一个配置字典。它不是“读取纯文本”，因此只 source 自己写的或已审查的可信脚本，不能把未知数据当配置代码执行。"
+    },
+    {
+      "title": "argc 是数量，argv 是参数列表",
+      "body": "本地可以运行 tclsh main.tcl morning readings.txt。argv 是 {morning readings.txt} 这样的 Tcl 列表，argc 是它的长度。文件名含空格时，由命令行正确引用；在 Tcl 中用 lindex 或 lassign 取参数，不用 split 按空格重拆。argv0 则通常是入口脚本名。"
+    },
+    {
+      "title": "页面提供的是明确的教学参数",
+      "body": "在线例子会把题目声明的 argv 列表和 argc 注入本次解释器；下面例子 2 的参数是 morning 与 attendance.txt。它不读取电脑终端的参数。可以在编辑器代码顶部用 set argv [list ...] 和 set argc [llength $argv] 修改实验参数，并保留两者一致。"
+    },
+    {
+      "title": "入口只协调各部分",
+      "body": "入口先检查参数，再 source 工具与配置，读取输入，调用过程并输出。配置字典保存 title、digits 等值；算法只接收需要的字段。相对 source 路径由当前工作目录决定，本课程在线运行统一从虚拟 /work 启动；本地也请先进入示例目录。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "加载可复用的标题工具",
+      "code": "source helpers.tcl\nputs [reportHeading 周二]\nputs [reportHeading 周五]",
+      "expected": "报告：周二\n报告：周五",
+      "files": {
+        "helpers.tcl": "proc reportHeading {name} { return \"报告：$name\" }\n"
+      }
+    },
+    {
+      "title": "读取本次运行参数",
+      "code": "if {$argc != 2} { error \"用法：main.tcl <报告名称> <输入文件>\" }\nlassign $argv reportName inputPath\nputs \"报告名称：$reportName\"\nputs \"输入文件：$inputPath\"",
+      "expected": "报告名称：morning\n输入文件：attendance.txt",
+      "argv": [
+        "morning",
+        "attendance.txt"
+      ]
+    },
+    {
+      "title": "配置控制显示精度",
+      "code": "set config [source settings.tcl]\nsource tools.tcl\nputs [dict get $config title]\nputs [formatAverage {1.2 1.4 1.6} [dict get $config digits]]",
+      "expected": "周末实验\n1.40",
+      "files": {
+        "settings.tcl": "dict create title {周末实验} digits 2\n",
+        "tools.tcl": "proc formatAverage {values digits} {\n    if {[llength $values] == 0} { return {无数据} }\n    set total 0.0\n    foreach value $values { set total [expr {$total + $value}] }\n    return [format \"%.*f\" $digits [expr {$total / [llength $values]}]]\n}\n"
+      }
+    }
+  ],
+  "exercises": [
+    {
+      "title": "入口加载工具文件",
+      "prompt": "题目附带 headings.tcl，其中定义 makeHeading {topic}。不要在入口重写它。用 source 加载，然后输出“摘要 / 实验 A”。",
+      "starter": "# 加载 headings.tcl\nputs [makeHeading {实验 A}]",
+      "solution": "source headings.tcl\nputs [makeHeading {实验 A}]",
+      "expected": "摘要 / 实验 A",
+      "hints": [
+        "source 的参数是相对文件路径。",
+        "函数调用中 {实验 A} 是一个带空格的参数。"
+      ],
+      "checks": [
+        {
+          "label": "工具对其他标题也生效",
+          "script": "expr {[makeHeading {家庭采购}] eq \"摘要 / 家庭采购\"}"
+        },
+        {
+          "label": "空标题遵循工具规则",
+          "script": "expr {[makeHeading {}] eq \"摘要 / \"}"
+        }
+      ],
+      "files": {
+        "headings.tcl": "proc makeHeading {topic} { return \"摘要 / $topic\" }\n"
+      }
+    },
+    {
+      "title": "可靠地解析两个参数",
+      "prompt": "定义 reportArgs {argsList}：要求恰好两个元素，否则 error \"需要标题和输入文件两个参数\"；返回含 title 与 input 字段的字典。通过 argv 调用并输出字段，文件名包含空格。",
+      "starter": "proc reportArgs {argsList} {\n    # 校验列表长度，再建立字典\n}\nset request [reportArgs $argv]\nputs [dict get $request title]\nputs [dict get $request input]",
+      "solution": "proc reportArgs {argsList} {\n    if {[llength $argsList] != 2} { error \"需要标题和输入文件两个参数\" }\n    lassign $argsList title inputPath\n    return [dict create title $title input $inputPath]\n}\nset request [reportArgs $argv]\nputs [dict get $request title]\nputs [dict get $request input]",
+      "expected": "下午实验\nlab results.txt",
+      "hints": [
+        "argsList 已经是列表，不要 split。",
+        "lassign 保留每个元素内部的空格，dict create 建立字段。"
+      ],
+      "checks": [
+        {
+          "label": "不同参数仍正确保留空格",
+          "script": "set r [reportArgs [list {周日 汇总} {data set.txt}]]; expr {[dict get $r title] eq \"周日 汇总\" && [dict get $r input] eq \"data set.txt\"}"
+        },
+        {
+          "label": "拒绝错误数量",
+          "script": "expr {[catch {reportArgs {}}] == 1 && [catch {reportArgs {only}}] == 1 && [catch {reportArgs {a b c}}] == 1}"
+        }
+      ],
+      "argv": [
+        "下午实验",
+        "lab results.txt"
+      ]
+    },
+    {
+      "title": "用配置和参数生成报告",
+      "prompt": "定义 generateReport {argsList}，要求一个输入文件参数，否则报错；加载 settings.tcl 与 tools.tcl，读取数值文件（本题保证非空合法数值），调用 formatAverage，返回两行文本：配置 title 和“平均值：N”。",
+      "starter": "proc generateReport {argsList} {\n    # 校验参数，source 配置与工具，读取文件并格式化\n}\nputs [generateReport $argv]",
+      "solution": "proc generateReport {argsList} {\n    if {[llength $argsList] != 1} { error \"需要一个输入文件参数\" }\n    set config [source settings.tcl]\n    source tools.tcl\n    set ch [open [lindex $argsList 0] r]\n    set values [split [string trim [read $ch]] \"\n\"]\n    close $ch\n    set average [formatAverage $values [dict get $config digits]]\n    return \"[dict get $config title]\n平均值：$average\"\n}\nputs [generateReport $argv]",
+      "expected": "测量日报\n平均值：2.50",
+      "hints": [
+        "source settings.tcl 的返回值就是字典。",
+        "read 读入后关闭通道，split 成每行一个数值的列表。"
+      ],
+      "checks": [
+        {
+          "label": "输入不同，平均值随之变化",
+          "script": "expr {[generateReport {other.txt}] eq \"测量日报\n平均值：5.00\"}"
+        },
+        {
+          "label": "配置精度改变会影响输出",
+          "script": "set ch [open settings.tcl w]; puts $ch {dict create title {另一个实验} digits 1}; close $ch; expr {[generateReport {readings.txt}] eq \"另一个实验\n平均值：2.5\"}"
+        },
+        {
+          "label": "拒绝缺少或多余参数",
+          "script": "expr {[catch {generateReport {}}] == 1 && [catch {generateReport {a b}}] == 1}"
+        }
+      ],
+      "files": {
+        "settings.tcl": "dict create title {测量日报} digits 2\n",
+        "tools.tcl": "proc formatAverage {values digits} {\n    set total 0.0\n    foreach value $values { set total [expr {$total + $value}] }\n    return [format \"%.*f\" $digits [expr {$total / [llength $values]}]]\n}\n",
+        "readings.txt": "2\n3\n",
+        "other.txt": "4\n6\n"
+      },
+      "argv": [
+        "readings.txt"
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "对 argv 做 split，把“lab results.txt”拆成两个参数。",
+      "fix": "argv 本来就是 Tcl 列表。用 llength、lindex 或 lassign；在自己构造参数时用 list。"
+    },
+    {
+      "problem": "把用户提供的任意文本文件直接 source。",
+      "fix": "source 会执行 Tcl 命令。普通报告用 open/read 读取；配置脚本必须可信，数据不是代码。"
+    }
+  ],
+  "exploration": "在例子 2 顶部加 set argv [list {晚间实验} {my readings.txt}] 和 set argc [llength $argv]，观察空格仍属于同一个参数。将例子 3 的 digits 改成 1，确认变化发生在显示精度而非原始平均值。",
+  "quiz": [
+    {
+      "question": "source settings.tcl 与 read $ch 最关键的区别是？",
+      "options": [
+        "source 执行 Tcl 代码，read 返回文本",
+        "两者总是等价",
+        "read 会定义过程"
+      ],
+      "answer": 0,
+      "explanation": "配置脚本是代码，数据文件是文本；这也影响信任边界。"
+    },
+    {
+      "question": "argv 含一个文件名“lab results.txt”，应该如何取出它？",
+      "options": [
+        "split $argv",
+        "lindex $argv 0",
+        "按空格截取"
+      ],
+      "answer": 1,
+      "explanation": "argv 是列表，lindex 保留元素内的空格。"
+    }
+  ],
+  "cheatsheet": [
+    "加载：source helpers.tcl",
+    "参数数量：$argc；参数列表：$argv；入口名：$argv0",
+    "拆参数：lassign $argv title inputPath",
+    "构造参数：set argv [list {带空格的标题} {input data.txt}]",
+    "可信配置：set config [source settings.tcl]；dict get $config digits"
+  ],
+  "next": "第 15 节用 TclOO 建立多台拥有独立状态的测量仪器，并比较对象与过程各自适合的场景。",
+  "view": "modules",
+  "diagram": "assets/diagrams/14.svg"
+}

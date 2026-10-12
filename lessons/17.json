@@ -1,0 +1,164 @@
+{
+  "id": 17,
+  "unit": 6,
+  "title": "约束与报告：用教学路径看懂 slack",
+  "summary": "以周期减延迟的简化模型计算 slack，解析教学报告并排序关注路径。",
+  "minutes": 45,
+  "prerequisites": [
+    "正则与捕获组",
+    "字典与列表",
+    "数值计算与过程",
+    "Tcl 与 EDA 工具"
+  ],
+  "objectives": [
+    "解释教学时钟周期与路径延迟的单位",
+    "计算简化模型中的 slack",
+    "解析明确格式的教学报告",
+    "筛选负 slack 并按数值排序",
+    "列出真实 STA 与简化模型的重要差异"
+  ],
+  "problem": "一份教学设计报告列出三条路径。假设它们都必须在 10 ns 内完成，哪些来得及，哪些需要关注？先把周期看成公交发车间隔、延迟看成完成任务耗时，再用明确的数据模型计算剩余时间。",
+  "steps": [
+    {
+      "title": "周期、延迟与单位",
+      "body": "本节所有数值单位都是 ns。教学模型假设单周期、同一时钟的简化 setup 检查：slack = period - delay。8.2 ns 的耗时在 10 ns 预算内，剩余 1.8 ns；10.8 ns 则超出 0.8 ns。负值标为需要关注，零表示模型中恰好达到边界。"
+    },
+    {
+      "title": "这不是完整的 STA 方程",
+      "body": "真实 setup slack 一般是 required arrival time 减 actual arrival time，还涉及时钟边沿、时钟树延迟与 skew、setup time、uncertainty、传播延迟、I/O 和多周期等约束。hold 检查另有要求。本课没有这些因素，不生成可用于签核的时序结论。"
+    },
+    {
+      "title": "先约定报告格式再解析",
+      "body": "教学行格式为 PATH 名称 DELAY 数值，例如 PATH data_a DELAY 8.2。先 regexp 抓取两个字段，再验证数值范围。路径名在本课不含空白；生产报告格式会更复杂，不应把这个模式直接套上所有工具输出。"
+    },
+    {
+      "title": "排序应使用数值，不是字典序",
+      "body": "将 [list slack path] 作为排序行，用 lsort -real -index 0；更负的 slack 排在前面。需要关注的条件是 slack < 0，显示时 format 保留两位小数；选择与排序使用未四舍五入的数值。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "一个周期，两种路径延迟",
+      "code": "set period 10.0\nforeach delay {8.2 10.8} {\n    set slack [expr {$period - $delay}]\n    puts [format \"延迟 %.2f ns → slack %.2f ns\" $delay $slack]\n}",
+      "expected": "延迟 8.20 ns → slack 1.80 ns\n延迟 10.80 ns → slack -0.80 ns"
+    },
+    {
+      "title": "从一行教学报告提取字段",
+      "code": "set line \"PATH data_a DELAY 10.8\"\nif {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> path delay]} {\n    error \"不是约定的教学报告格式\"\n}\nset record [dict create path $path delay $delay slack [expr {10.0 - $delay}]]\nputs \"路径：[dict get $record path]\"\nputs [format \"slack：%.2f ns\" [dict get $record slack]]",
+      "expected": "路径：data_a\nslack：-0.80 ns"
+    },
+    {
+      "title": "负 slack 从最需要关注的开始",
+      "code": "set period 10.0\nset pairs {}\nforeach {path delay} {data_a 8.2 data_b 10.8 data_c 11.5} {\n    set slack [expr {$period - $delay}]\n    if {$slack < 0} { lappend pairs [list $slack $path] }\n}\nforeach pair [lsort -real -index 0 $pairs] {\n    lassign $pair slack path\n    puts [format \"%s | %.2f ns\" $path $slack]\n}",
+      "expected": "data_c | -1.50 ns\ndata_b | -0.80 ns"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "可重复使用的 slack 计算",
+      "prompt": "定义 teachingSlack {period delay}，返回 period - delay。输入为有限数值，周期为正，延迟非负。输出 10 ns 周期和 9.5 ns 延迟的结果。",
+      "starter": "proc teachingSlack {period delay} {\n    # 简化模型；返回数值\n}\nputs [format \"教学 slack：%.2f ns\" [teachingSlack 10 9.5]]",
+      "solution": "proc teachingSlack {period delay} {\n    return [expr {double($period) - $delay}]\n}\nputs [format \"教学 slack：%.2f ns\" [teachingSlack 10 9.5]]",
+      "expected": "教学 slack：0.50 ns",
+      "hints": [
+        "两个输入必须都参与计算。",
+        "返回原始数值，显示格式由调用方决定。"
+      ],
+      "checks": [
+        {
+          "label": "正、零、负边界",
+          "script": "expr {abs([teachingSlack 8 6.5] - 1.5) < 1e-9 && [teachingSlack 8 8] == 0 && [teachingSlack 8 9] == -1}"
+        },
+        {
+          "label": "改变周期后重新计算",
+          "script": "expr {[teachingSlack 12 9] == 3 && [teachingSlack 6 0] == 6}"
+        }
+      ]
+    },
+    {
+      "title": "解析一行，拒绝坏格式",
+      "prompt": "定义 parseTeachingPath {line period}，格式为 PATH 名称 DELAY 非负十进制数（整数或带小数，路径名无空白）。返回 path、delay、slack 字典；坏格式 error \"教学路径格式错误\"。周期保证有效。",
+      "starter": "proc parseTeachingPath {line period} {\n    # regexp 提取字段并返回字典\n}\nset record [parseTeachingPath {PATH p7 DELAY 10.2} 10]\nputs \"[dict get $record path]：[format %.2f [dict get $record slack]]\"",
+      "solution": "proc parseTeachingPath {line period} {\n    if {![regexp {^PATH\\s+(\\S+)\\s+DELAY\\s+([0-9]+(?:\\.[0-9]+)?)$} $line -> path delay]} {\n        error \"教学路径格式错误\"\n    }\n    return [dict create path $path delay $delay slack [expr {double($period) - $delay}]]\n}\nset record [parseTeachingPath {PATH p7 DELAY 10.2} 10]\nputs \"[dict get $record path]：[format %.2f [dict get $record slack]]\"",
+      "expected": "p7：-0.20",
+      "hints": [
+        "^ 与 $ 要求整行符合格式，捕获组分别接 path 和 delay。",
+        "expr 用捕获出的 delay 与参数 period 计算，dict create 保存字段。"
+      ],
+      "checks": [
+        {
+          "label": "另一条路径与零延迟",
+          "script": "set a [parseTeachingPath {PATH other DELAY 0} 6]; set b [parseTeachingPath {PATH p8 DELAY 4.5} 4]; expr {[dict get $a path] eq \"other\" && [dict get $a slack] == 6 && abs([dict get $b slack] + 0.5) < 1e-9}"
+        },
+        {
+          "label": "坏格式不是静默空结果",
+          "script": "expr {[catch {parseTeachingPath {PATH p DELAY -1} 10}] == 1 && [catch {parseTeachingPath {PATH p DELAY abc} 10}] == 1 && [catch {parseTeachingPath {PATH p DELAY 1 trailing} 10}] == 1}"
+        }
+      ]
+    },
+    {
+      "title": "筛选并按严重程度排序",
+      "prompt": "定义 attentionPaths {records}。输入字典列表含 path 与 slack。返回 [list slack path] 行的列表，仅保留 slack < 0，按 slack 数值升序排列；输出结果。",
+      "starter": "proc attentionPaths {records} {\n    # 构造排序行，只选择严格负值\n}\nset paths [list     [dict create path a slack -0.2]     [dict create path b slack 0.0]     [dict create path c slack -1.1]]\nforeach row [attentionPaths $paths] {\n    lassign $row slack path\n    puts [format \"%s：%.2f ns\" $path $slack]\n}",
+      "solution": "proc attentionPaths {records} {\n    set selected {}\n    foreach record $records {\n        set slack [dict get $record slack]\n        if {$slack < 0} {\n            lappend selected [list $slack [dict get $record path]]\n        }\n    }\n    return [lsort -real -index 0 $selected]\n}\nset paths [list     [dict create path a slack -0.2]     [dict create path b slack 0.0]     [dict create path c slack -1.1]]\nforeach row [attentionPaths $paths] {\n    lassign $row slack path\n    puts [format \"%s：%.2f ns\" $path $slack]\n}",
+      "expected": "c：-1.10 ns\na：-0.20 ns",
+      "hints": [
+        "先筛选，lappend [list $slack $path]。",
+        "lsort -real -index 0 按每一行的第 0 个元素做数值排序。"
+      ],
+      "checks": [
+        {
+          "label": "数值排序与零边界",
+          "script": "set r [list [dict create path mild slack -2] [dict create path worst slack -10] [dict create path edge slack 0]]; expr {[attentionPaths $r] eq {{-10 worst} {-2 mild}}}"
+        },
+        {
+          "label": "空输入和全部满足边界",
+          "script": "expr {[attentionPaths {}] eq {} && [attentionPaths [list [dict create path pass slack 1]]] eq {}}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "把 slack 计算写成 delay - period，或者把零 slack 也算成负值。",
+      "fix": "本教学 setup 模型为 period - delay；严格负值使用 < 0。真实约束检查还需完整工具模型。"
+    },
+    {
+      "problem": "用默认 lsort 排序 slack，或先四舍五入再判断。",
+      "fix": "使用 -real 做数值排序，先根据原数值筛选；format 只用于最后显示。"
+    }
+  ],
+  "exploration": "把例子 3 的 period 从 10.0 改成 11.0，观察 data_b 转为非负，data_c 仍需关注。再改成 11.5，观察零 slack 的路径没有被选入负值列表。说明这只改变教学预算，不是优化电路。",
+  "quiz": [
+    {
+      "question": "本节简化模型中，period = 8，delay = 9，slack 是？",
+      "options": [
+        "+1 ns",
+        "-1 ns",
+        "0 ns"
+      ],
+      "answer": 1,
+      "explanation": "预算减耗时为 8 - 9 = -1，教学模型中超出预算。"
+    },
+    {
+      "question": "真实 STA 能否直接用本节 period - delay 作为完整结论？",
+      "options": [
+        "可以，永远正确",
+        "不能，还需时钟与器件等约束因素",
+        "只看路径名称即可"
+      ],
+      "answer": 1,
+      "explanation": "简化模型忽略 setup、时钟树、uncertainty 等因素，也不覆盖 hold。"
+    }
+  ],
+  "cheatsheet": [
+    "教学 setup 模型：slack = period - delay（单位一致）",
+    "关注条件：$slack < 0；零值不属于负值。",
+    "解析：regexp {^PATH ... DELAY ...$} $line -> path delay",
+    "数值排序：lsort -real -index 0 $rows",
+    "显示：format \"%.2f ns\" $slack；真实 STA 需工具完整约束模型。"
+  ],
+  "next": "第 18 节把多份教学报告读取、解析、统计和错误处理合为一份可追溯摘要。",
+  "view": "paths",
+  "diagram": "assets/diagrams/17.svg"
+}

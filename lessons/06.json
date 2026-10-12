@@ -1,0 +1,176 @@
+{
+  "id": 6,
+  "unit": 2,
+  "title": "列表",
+  "summary": "把带空格的姓名当作完整元素，整理并查询报名名单。",
+  "minutes": 35,
+  "prerequisites": [
+    "01–05：变量、替换与 foreach。"
+  ],
+  "objectives": [
+    "用 list 和 lappend 正确构造列表",
+    "用 llength、lindex、lrange 查询元素",
+    "理解索引从 0 开始和 end 的用途",
+    "用 lsearch -exact 查询完整姓名",
+    "用 lsort 排序，并按实际需求去重"
+  ],
+  "problem": "报名者是“林 雨”“Chen Ming”“赵安”，其中两人的姓名含空格。直接把它们拼成空格分隔文字会丢失姓名边界。列表是一种有明确元素边界的数据值；Tcl 用可解析的文本表示列表，但列表绝不等于随便按空格拆出来的字符串。",
+  "steps": [
+    {
+      "title": "使用 list 构造边界",
+      "body": "set names [list \"林 雨\" \"Chen Ming\" 赵安] 生成三个元素。list 会选择需要的花括号或转义，保证以后仍能解析出原有元素。显示列表时看到的花括号通常是表示形式，不是姓名本身；lindex 返回的是实际元素值。"
+    },
+    {
+      "title": "查询位置与区间",
+      "body": "llength $names 得到元素数；lindex $names 0 是第一项；lindex $names end 是最后一项。索引从 0 开始。lrange $names 0 1 返回前两项组成的新列表，上界包含在内。lindex 越过列表边界返回空字符串，因此应先检查长度，不能把空值误当成真实姓名。"
+    },
+    {
+      "title": "追加与查找",
+      "body": "lappend names \"许 岚\" 把一个新元素追加到名为 names 的变量。注意第一个参数是变量名。lsearch -exact $names \"Chen Ming\" 查找完全相同的元素，找到时返回索引，没找到时返回 -1。默认 lsearch 使用模式匹配，姓名中的 * 等符号会有特殊意义；完整姓名查询显式用 -exact。"
+    },
+    {
+      "title": "排序不一定是数值排序",
+      "body": "lsort $names 按默认字符串规则排序；测量值使用 lsort -integer $values 或 -real。lsort -unique 同时排序并删除比较意义上相等的项，不保留原始报名顺序。如果需要“先报名者在前”，遍历原名单，只有没出现过才 lappend 到新名单。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "含空格姓名仍是三个元素",
+      "code": "set names [list \"林 雨\" \"Chen Ming\" 赵安]\nputs \"人数：[llength $names]\"\nputs \"第一位：[lindex $names 0]\"\nputs \"最后一位：[lindex $names end]\"",
+      "expected": "人数：3\n第一位：林 雨\n最后一位：赵安"
+    },
+    {
+      "title": "追加、区间与精确查找",
+      "code": "set names [list \"林 雨\" \"Chen Ming\" 赵安]\nlappend names \"许 岚\"\nputs [join [lrange $names 1 2] \" / \"]\nputs [lsearch -exact $names \"许 岚\"]\nputs [lsearch -exact $names \"不存在\"]",
+      "expected": "Chen Ming / 赵安\n3\n-1"
+    },
+    {
+      "title": "排序与保持原顺序去重",
+      "code": "set durations {12 3 20 3}\nputs [lsort -integer -unique $durations]\nset names [list \"林 雨\" \"Chen Ming\" \"林 雨\" 赵安]\nset unique {}\nforeach name $names {\n    if {[lsearch -exact $unique $name] < 0} {\n        lappend unique $name\n    }\n}\nputs [join $unique \" / \"]",
+      "expected": "3 12 20\n林 雨 / Chen Ming / 赵安"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "建立完整报名名单",
+      "prompt": "构造 names，按顺序包含“顾 宁”“Ari Lee”“吴涛”，再追加“周 月”。把第二项存到 second，人数存到 count。输出“4 人，第二位：Ari Lee”。",
+      "starter": "set names {}\n# 正确构造并追加含空格姓名\nset second \"\"\nset count 0\nputs \"$count 人，第二位：$second\"",
+      "solution": "set names [list \"顾 宁\" \"Ari Lee\" 吴涛]\nlappend names \"周 月\"\nset second [lindex $names 1]\nset count [llength $names]\nputs \"$count 人，第二位：$second\"",
+      "expected": "4 人，第二位：Ari Lee",
+      "hints": [
+        "list 的每个参数成为一个元素；含空格时先分组。",
+        "lappend 后再求 llength，第二项索引为 1。"
+      ],
+      "checks": [
+        {
+          "label": "姓名边界完整",
+          "script": "expr {$names eq [list \"顾 宁\" \"Ari Lee\" 吴涛 \"周 月\"]}"
+        },
+        {
+          "label": "人数与位置查询一致",
+          "script": "expr {$count == 4 && $second eq [lindex $names 1] && $second eq \"Ari Lee\"}"
+        }
+      ]
+    },
+    {
+      "title": "查询带星号的项目名",
+      "prompt": "items 包含“资料包”“A*组”“A1组”。用精确查询把 targetIndex 保存为 A*组 的索引；把不存在的 B组 索引保存为 missingIndex；把从 1 到 end 的子列表保存为 tail。输出两个索引，再用“ / ”连接 tail。",
+      "starter": "set items [list 资料包 \"A*组\" A1组]\nset targetIndex -1\nset missingIndex 0\nset tail {}\n# 查询与截取\nputs \"$targetIndex $missingIndex\"\nputs [join $tail \" / \"]",
+      "solution": "set items [list 资料包 \"A*组\" A1组]\nset targetIndex [lsearch -exact $items \"A*组\"]\nset missingIndex [lsearch -exact $items B组]\nset tail [lrange $items 1 end]\nputs \"$targetIndex $missingIndex\"\nputs [join $tail \" / \"]",
+      "expected": "1 -1\nA*组 / A1组",
+      "hints": [
+        "用 -exact 让 * 作为普通字符。",
+        "lrange 的结束索引可以写 end，并且包含该项。"
+      ],
+      "checks": [
+        {
+          "label": "查询返回正确索引与未找到标记",
+          "script": "expr {$targetIndex == 1 && $missingIndex == -1}"
+        },
+        {
+          "label": "子列表保留完整元素",
+          "script": "expr {$tail eq [list \"A*组\" A1组] && [llength $tail] == 2}"
+        }
+      ]
+    },
+    {
+      "title": "报名去重，保留先后顺序",
+      "prompt": "原名单 names 为“周 月”“顾 宁”“周 月”“Ari Lee”“顾 宁”。用 foreach、lsearch -exact 和 lappend 生成 unique，保留各姓名第一次出现的顺序。再从空输入生成 emptyUnique。输出人数和名单、空名单人数。",
+      "starter": "set names [list \"周 月\" \"顾 宁\" \"周 月\" \"Ari Lee\" \"顾 宁\"]\nset unique {}\nset emptyNames {}\nset emptyUnique {}\n# 对每个姓名，仅在未出现时追加\nputs \"[llength $unique] 人：[join $unique { / }]\"\nputs \"空名单：[llength $emptyUnique] 人\"",
+      "solution": "set names [list \"周 月\" \"顾 宁\" \"周 月\" \"Ari Lee\" \"顾 宁\"]\nset unique {}\nforeach name $names {\n    if {[lsearch -exact $unique $name] == -1} {\n        lappend unique $name\n    }\n}\nset emptyNames {}\nset emptyUnique {}\nforeach name $emptyNames {\n    if {[lsearch -exact $emptyUnique $name] == -1} {\n        lappend emptyUnique $name\n    }\n}\nputs \"[llength $unique] 人：[join $unique { / }]\"\nputs \"空名单：[llength $emptyUnique] 人\"",
+      "expected": "3 人：周 月 / 顾 宁 / Ari Lee\n空名单：0 人",
+      "hints": [
+        "不要排序，否则会改变首次报名的顺序。",
+        "lsearch -exact 返回 -1 时再追加；空输入循环执行零次。"
+      ],
+      "checks": [
+        {
+          "label": "去重保留第一次出现的次序",
+          "script": "expr {$unique eq [list \"周 月\" \"顾 宁\" \"Ari Lee\"] && [llength $unique] == 3}"
+        },
+        {
+          "label": "空名单仍是合法空列表",
+          "script": "expr {[llength $emptyNames] == 0 && [llength $emptyUnique] == 0}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "用 set names \"林 雨 Chen Ming\"，认为只有两个人",
+      "fix": "这段文字被当列表解析时有四个元素。使用 [list \"林 雨\" \"Chen Ming\"] 保留边界。"
+    },
+    {
+      "problem": "写 lappend $names \"新人\"",
+      "fix": "第一个参数是要修改的变量名，写 lappend names \"新人\"。"
+    },
+    {
+      "problem": "lsort {12 3 20}，期待 3 12 20",
+      "fix": "默认字符串比较与数值比较不同。数字用 -integer 或 -real；姓名排序则使用适合语言与需求的规则。"
+    }
+  ],
+  "exploration": "把例子三 unique 的实现换成 lsort -unique $names，对比报名顺序。再给名单加入“李 {晨}”，通过 list 构造它，观察输出表示中的转义以及 lindex 得到的实际姓名。",
+  "quiz": [
+    {
+      "question": "set names [list \"林 雨\" \"Chen Ming\"] 的 llength 是多少？",
+      "options": [
+        "2",
+        "4",
+        "取决于输出中的花括号数"
+      ],
+      "answer": 0,
+      "explanation": "list 用参数边界创建元素，每个含空格的姓名都是一个完整元素。"
+    },
+    {
+      "question": "lsearch -exact 找不到时返回什么？",
+      "options": [
+        "0",
+        "空字符串",
+        "-1"
+      ],
+      "answer": 2,
+      "explanation": "0 表示第一项匹配，-1 明确表示没找到。"
+    },
+    {
+      "question": "lrange $items 0 1 包含哪些元素？",
+      "options": [
+        "只有索引 0",
+        "索引 0 和 1",
+        "索引 1 和 2"
+      ],
+      "answer": 1,
+      "explanation": "lrange 的两个端点都包含，列表索引从 0 开始。"
+    }
+  ],
+  "cheatsheet": [
+    "list $a $b：安全构造列表",
+    "llength $items：元素数；lindex $items 0 / end：取元素",
+    "lappend items $value：追加完整元素",
+    "lrange $items first last：包含两个端点的区间",
+    "lsearch -exact $items $value：索引或 -1",
+    "lsort -integer / -real：数值排序；-unique：排序后去重"
+  ],
+  "next": "完整姓名已成为列表元素。下一节处理每个元素内部的多余空白与大小写。",
+  "view": "list",
+  "diagram": "assets/diagrams/06.svg"
+}

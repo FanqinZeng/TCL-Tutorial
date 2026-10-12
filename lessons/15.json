@@ -1,0 +1,163 @@
+{
+  "id": 15,
+  "unit": 5,
+  "title": "TclOO 入门：两台仪器，各自记住测量值",
+  "summary": "用类定义行为，用对象保存各自的状态，掌握创建、调用方法和销毁。",
+  "minutes": 45,
+  "prerequisites": [
+    "过程与参数",
+    "作用域与 namespace variable",
+    "列表与统计"
+  ],
+  "objectives": [
+    "使用 oo::class create 定义简单类",
+    "通过 constructor 设置初始状态",
+    "用 method 读取或更新对象变量",
+    "创建并比较两个独立实例",
+    "使用 destroy 释放实例并判断何时过程已足够"
+  ],
+  "problem": "两台测量仪器分别记录不同实验的数据。用一个共享列表会把它们混在一起。对象把“这一台的测量列表”与“这台能做的操作”放在一起，让两台仪器使用同样的方法，却保有各自的记录。",
+  "steps": [
+    {
+      "title": "类是规则，对象是具体的一台",
+      "body": "oo::class create Meter 定义类；Meter new 创建实例并返回对象命令名。对象命令名由解释器生成，保存到变量 m；调用 $m add 1.2 就是向这一台实例发出请求。TclOO 随 Tcl 8.6 及以上提供。"
+    },
+    {
+      "title": "constructor 设置每个实例的初始状态",
+      "body": "类体中的 variable readings 声明对象变量。constructor {} {set readings {}} 初始化每个新实例的记录。它不是命名空间里所有实例共用的一个列表；两个实例各有自己的变量。"
+    },
+    {
+      "title": "method 是对象可调用的操作",
+      "body": "method add {value} {lappend readings $value} 定义方法。类声明的对象变量会在方法中可访问，形参如 value 仍是本次调用的局部变量。平均值需要先判断空列表；实际测量工具还应验证输入并定义单位。"
+    },
+    {
+      "title": "destroy 与更简单的方案",
+      "body": "用 $m destroy 销毁该实例；它对应的命令随即消失，继续调用会报错。只有一次计算、没有持续状态时，过程往往更清楚。这里用对象是因为多台仪器独立保存多次调用之间的状态，不意味着所有脚本都必须面向对象。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "一台仪器记录两次数值",
+      "code": "oo::class create Meter {\n    variable readings\n    constructor {} { set readings {} }\n    method add {value} { lappend readings $value }\n    method values {} { return $readings }\n}\nset m [Meter new]\n$m add 1.2\n$m add 1.5\nputs \"记录：[$m values]\"\n$m destroy",
+      "expected": "记录：1.2 1.5"
+    },
+    {
+      "title": "两个对象互不混用记录",
+      "code": "oo::class create CounterMeter {\n    variable readings\n    constructor {} { set readings {} }\n    method add {value} { lappend readings $value }\n    method count {} { return [llength $readings] }\n}\nset first [CounterMeter new]\nset second [CounterMeter new]\n$first add 10\n$first add 20\n$second add 8\nputs \"第一台：[$first count] 条\"\nputs \"第二台：[$second count] 条\"\n$first destroy\n$second destroy",
+      "expected": "第一台：2 条\n第二台：1 条"
+    },
+    {
+      "title": "空数据状态与销毁后的命令",
+      "code": "oo::class create AverageMeter {\n    variable values\n    constructor {} { set values {} }\n    method add {x} { lappend values $x }\n    method average {} {\n        if {[llength $values] == 0} { return {无数据} }\n        set total 0.0\n        foreach x $values { set total [expr {$total + $x}] }\n        return [format \"%.2f\" [expr {$total / [llength $values]}]]\n    }\n}\nset m [AverageMeter new]\nputs [$m average]\n$m add 2\n$m add 4\nputs [$m average]\n$m destroy\nputs \"销毁后存在：[expr {[llength [info commands $m]] > 0}]\"",
+      "expected": "无数据\n3.00\n销毁后存在：0"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "带名字的仪器",
+      "prompt": "定义 NamedMeter，constructor {label} 存储名字，method label {} 返回名字。创建“温度计 A”并输出，然后销毁。",
+      "starter": "oo::class create NamedMeter {\n    # 声明对象变量，定义构造器与 label 方法\n}\nset meter [NamedMeter new {温度计 A}]\nputs [$meter label]\n$meter destroy",
+      "solution": "oo::class create NamedMeter {\n    variable name\n    constructor {label} { set name $label }\n    method label {} { return $name }\n}\nset meter [NamedMeter new {温度计 A}]\nputs [$meter label]\n$meter destroy",
+      "expected": "温度计 A",
+      "hints": [
+        "variable name 在类体声明对象变量。",
+        "构造参数 label 赋给 name，方法 return $name。"
+      ],
+      "checks": [
+        {
+          "label": "两台对象名字不同",
+          "script": "set a [NamedMeter new A]; set b [NamedMeter new B]; set ok [expr {[$a label] eq \"A\" && [$b label] eq \"B\"}]; $a destroy; $b destroy; set ok"
+        },
+        {
+          "label": "空名字也原样返回，已销毁对象不存在",
+          "script": "set a [NamedMeter new {}]; set ok [expr {[$a label] eq \"\" && [llength [info commands $meter]] == 0}]; $a destroy; set ok"
+        }
+      ]
+    },
+    {
+      "title": "独立的测量列表",
+      "prompt": "定义 SampleMeter，初始记录为空；add {value} 追加数值并返回数量，values {} 返回记录。创建对象、加入两值、输出列表、销毁。",
+      "starter": "oo::class create SampleMeter {\n    # readings 是对象状态\n}\nset meter [SampleMeter new]\n$meter add 5\n$meter add 7\nputs [$meter values]\n$meter destroy",
+      "solution": "oo::class create SampleMeter {\n    variable readings\n    constructor {} { set readings {} }\n    method add {value} {\n        lappend readings $value\n        return [llength $readings]\n    }\n    method values {} { return $readings }\n}\nset meter [SampleMeter new]\n$meter add 5\n$meter add 7\nputs [$meter values]\n$meter destroy",
+      "expected": "5 7",
+      "hints": [
+        "初始化空列表后，用 lappend 保存每次传入的值。",
+        "返回列表与计数是两个不同方法的职责。"
+      ],
+      "checks": [
+        {
+          "label": "初始为空且每次追加返回数量",
+          "script": "set a [SampleMeter new]; set ok [expr {[$a values] eq {} && [$a add 2] == 1 && [$a add 3] == 2 && [$a values] eq {2 3}}]; $a destroy; set ok"
+        },
+        {
+          "label": "实例彼此独立",
+          "script": "set a [SampleMeter new]; set b [SampleMeter new]; $a add 9; set ok [expr {[$a values] eq {9} && [$b values] eq {}}]; $a destroy; $b destroy; set ok"
+        }
+      ]
+    },
+    {
+      "title": "带清零与平均值的仪器",
+      "prompt": "定义 StatsMeter，add {value} 记录值，average {} 返回两位小数文本（空数据返回“无数据”），reset {} 清空记录。输入保证有限数值。用两次读取验证清零。",
+      "starter": "oo::class create StatsMeter {\n    # 完成 constructor、add、average、reset\n}\nset meter [StatsMeter new]\n$meter add 2\n$meter add 6\nputs [$meter average]\n$meter reset\nputs [$meter average]\n$meter destroy",
+      "solution": "oo::class create StatsMeter {\n    variable readings\n    constructor {} { set readings {} }\n    method add {value} { lappend readings $value }\n    method average {} {\n        if {[llength $readings] == 0} { return {无数据} }\n        set sum 0.0\n        foreach value $readings { set sum [expr {$sum + $value}] }\n        return [format \"%.2f\" [expr {$sum / [llength $readings]}]]\n    }\n    method reset {} { set readings {} }\n}\nset meter [StatsMeter new]\n$meter add 2\n$meter add 6\nputs [$meter average]\n$meter reset\nputs [$meter average]\n$meter destroy",
+      "expected": "4.00\n无数据",
+      "hints": [
+        "average 先处理空列表；sum 从 0.0 开始。",
+        "reset 必须清空当前对象的 readings，而不是创建普通局部变量。"
+      ],
+      "checks": [
+        {
+          "label": "不同输入得到不同平均值",
+          "script": "set a [StatsMeter new]; $a add 1; $a add 2; set ok [expr {[$a average] eq \"1.50\"}]; $a destroy; set ok"
+        },
+        {
+          "label": "重置和独立对象边界",
+          "script": "set a [StatsMeter new]; set b [StatsMeter new]; $a add 8; $b add 12; $a reset; set ok [expr {[$a average] eq \"无数据\" && [$b average] eq \"12.00\"}]; $a destroy; $b destroy; set ok"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "忘记类体 variable readings，以为方法里的 set 会自动成为持久状态。",
+      "fix": "明确声明对象变量，并在 constructor 初始化；这样方法之间才访问同一台仪器的记录。"
+    },
+    {
+      "problem": "销毁对象后继续用保存的名称调用方法，或认为两个实例共享一个列表。",
+      "fix": "destroy 移除了对象命令；创建新的实例才能重新使用。每个实例独立初始化对象状态。"
+    }
+  ],
+  "exploration": "在例子 2 中只向 first 追加第三条记录，观察 second 数量不变。尝试对销毁后的对象调用 count，在错误区查看失效命令提示，之后再创建新实例。",
+  "quiz": [
+    {
+      "question": "同一个类创建的两个对象，readings 应该是什么关系？",
+      "options": [
+        "总是共用同一份列表",
+        "各自独立",
+        "只能一个对象拥有"
+      ],
+      "answer": 1,
+      "explanation": "实例保存独立对象变量，类提供可复用的行为定义。"
+    },
+    {
+      "question": "一次性计算 total = quantity * price，通常选什么更清楚？",
+      "options": [
+        "必须使用类",
+        "简单过程通常足够",
+        "必须保存全局对象"
+      ],
+      "answer": 1,
+      "explanation": "无持续状态的计算不需要对象；对象适合多份独立、跨调用状态。"
+    }
+  ],
+  "cheatsheet": [
+    "类：oo::class create Meter { variable readings; constructor {} {...}; method add {x} {...} }",
+    "实例：set m [Meter new]",
+    "调用：$m add 1.2；set result [$m average]",
+    "销毁：$m destroy",
+    "TclOO 要求 Tcl 8.6+；不需要外部面向对象扩展。"
+  ],
+  "next": "第 16 节进入 VLSI 场景：首先区分 Tcl 命令与 EDA 工具命令，并用透明的教学模型做对象筛选。",
+  "view": "objects",
+  "diagram": "assets/diagrams/15.svg"
+}

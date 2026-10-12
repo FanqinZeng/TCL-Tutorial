@@ -1,0 +1,166 @@
+{
+  "id": 7,
+  "unit": 3,
+  "title": "字符串处理",
+  "summary": "清理联系人信息，让大小写和空白遵守同一种格式。",
+  "minutes": 35,
+  "prerequisites": [
+    "01–06：变量、条件、循环与列表。"
+  ],
+  "objectives": [
+    "用 string trim 清除两端空白",
+    "用 tolower / toupper 统一大小写",
+    "用 string length 和 match 检查文本",
+    "用 split 与 join 转换分隔形式",
+    "区分字符、列表元素以及结构化格式"
+  ],
+  "problem": "联系人记录写成“  LI.MING@EXAMPLE.ORG  ”，分组说明写成“alpha;beta;gamma”。我们清理邮件地址两端空白并转为小写，再把组别整理成可读的一行。原始文字是数据，清理应保持中间有意义的内容。",
+  "steps": [
+    {
+      "title": "先清理边界，不误删内部",
+      "body": "string trim $raw 去掉两端的空白；不会删除姓名内部的空格。trim 的第二个可选参数是一组要剔除的字符。string tolower 与 toupper 转换大小写；它们返回新值，要用 set 保存结果，原变量不会自动改变。"
+    },
+    {
+      "title": "长度和简单模式",
+      "body": "string length 返回字符串长度，不是列表人数，也不是文件字节数。本节使用常见中文和英文字母，避免跨 Tcl 版本的补充 Unicode 字符差异。string match {*@example.org} $email 使用通配模式：* 表示任意长度，? 表示单个字符。它不是正规的邮件地址校验。"
+    },
+    {
+      "title": "split 是按字符集分隔",
+      "body": "split $text \";\" 以分号分割，得到列表；join $items \" / \" 将元素用指定分隔文字连接。split 的第二个参数是分隔字符集合，不是完整的分隔字符串：split $text \",;\" 遇到逗号或分号都会切开。连续分隔符会产生空元素，需明确是否保留。"
+    },
+    {
+      "title": "文本格式需要明确约定",
+      "body": "如果姓名中本来就含逗号，简单 split 逗号会把姓名切坏；完整 CSV 还有引号、转义等规则，本节不假装实现 CSV 解析器。Tcl 列表应由 list 构造，不能用 split 的空格规则代替。清理规则、原始值和结果都应该可查看。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "规范邮箱文字",
+      "code": "set raw \"  LI.MING@EXAMPLE.ORG  \"\nset email [string tolower [string trim $raw]]\nputs \"原始：<$raw>\"\nputs \"清理：<$email>\"\nputs [string match {*@example.org} $email]",
+      "expected": "原始：<  LI.MING@EXAMPLE.ORG  >\n清理：<li.ming@example.org>\n1"
+    },
+    {
+      "title": "分组说明变成可读列表",
+      "code": "set raw \"alpha;beta;gamma\"\nset groups [split $raw \";\"]\nputs \"组数：[llength $groups]\"\nputs [join $groups \" / \"]\nputs [string toupper [lindex $groups 0]]",
+      "expected": "组数：3\nalpha / beta / gamma\nALPHA"
+    },
+    {
+      "title": "连续分隔符与空元素",
+      "code": "set raw {甲;;乙,丙}\nset items [split $raw \",;\"]\nputs \"分段数：[llength $items]\"\nputs [join $items \" | \"]\nputs \"第二段长度：[string length [lindex $items 1]]\"\nputs [string trim \"  林 雨  \"]",
+      "expected": "分段数：4\n甲 |  | 乙 | 丙\n第二段长度：0\n林 雨"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "清理一条邮箱",
+      "prompt": "raw=\"  USER.ONE@EXAMPLE.ORG  \"。去两端空白并转小写保存为 email；把字符串长度存为 size，用 string match 检查后缀保存为 matched。输出邮箱，再输出长度与匹配标记。",
+      "starter": "set raw \"  USER.ONE@EXAMPLE.ORG  \"\nset email $raw\nset size 0\nset matched 0\n# 清理并检查\nputs $email\nputs \"$size $matched\"",
+      "solution": "set raw \"  USER.ONE@EXAMPLE.ORG  \"\nset email [string tolower [string trim $raw]]\nset size [string length $email]\nset matched [string match {*@example.org} $email]\nputs $email\nputs \"$size $matched\"",
+      "expected": "user.one@example.org\n20 1",
+      "hints": [
+        "内层 trim 的结果可以交给外层 tolower。",
+        "match 返回 1 或 0；这只是域名后缀检查。"
+      ],
+      "checks": [
+        {
+          "label": "原始记录保持，清理值正确",
+          "script": "expr {$raw eq \"  USER.ONE@EXAMPLE.ORG  \" && $email eq \"user.one@example.org\"}"
+        },
+        {
+          "label": "长度和域名检查使用清理后的值",
+          "script": "expr {$size == [string length $email] && $size == 20 && $matched == 1}"
+        }
+      ]
+    },
+    {
+      "title": "清理含空组的标签",
+      "prompt": "raw=\"  red ; ; BLUE; green  \"。以分号 split，再逐段 trim、tolower，删除清理后为空的段，生成 labels={red blue green}；display 用“ / ”连接。另对 rawEmpty=\" ;  ; \" 做相同处理，emptyLabels 应为空。输出 display 和空组数。",
+      "starter": "set raw \"  red ; ; BLUE; green  \"\nset rawEmpty \" ;  ; \"\nset labels {}\nset emptyLabels {}\n# 切分后逐段清理，空段不要追加\nset display [join $labels \" / \"]\nputs $display\nputs \"空组：[llength $emptyLabels]\"",
+      "solution": "set raw \"  red ; ; BLUE; green  \"\nset rawEmpty \" ;  ; \"\nset labels {}\nforeach part [split $raw \";\"] {\n    set cleaned [string tolower [string trim $part]]\n    if {$cleaned eq \"\"} {continue}\n    lappend labels $cleaned\n}\nset emptyLabels {}\nforeach part [split $rawEmpty \";\"] {\n    set cleaned [string tolower [string trim $part]]\n    if {$cleaned eq \"\"} {continue}\n    lappend emptyLabels $cleaned\n}\nset display [join $labels \" / \"]\nputs $display\nputs \"空组：[llength $emptyLabels]\"",
+      "expected": "red / blue / green\n空组：0",
+      "hints": [
+        "每段先 trim，再判断是否为空。",
+        "删除空段后 lappend 完整标签；对全部为空的输入也应用同一规则。"
+      ],
+      "checks": [
+        {
+          "label": "标签清理保持顺序",
+          "script": "expr {$labels eq {red blue green} && $display eq \"red / blue / green\"}"
+        },
+        {
+          "label": "全空分段不产生伪标签",
+          "script": "expr {[llength $emptyLabels] == 0}"
+        }
+      ]
+    },
+    {
+      "title": "筛选指定组织的地址",
+      "prompt": "contacts 包含“ A@EXAMPLE.ORG ”、“B@other.org”、“   ”、“c@example.org”。逐条 trim、tolower，只收集非空且匹配 *@example.org 的地址到 selected，保留顺序。输出两条地址和数量。这里的规则仅筛选后缀，不代表完整邮箱验证。",
+      "starter": "set contacts [list \" A@EXAMPLE.ORG \" \"B@other.org\" \"   \" \"c@example.org\"]\n set selected {}\n # 清理后筛选\n puts [join $selected \"\\n\"]\n puts \"数量：[llength $selected]\"",
+      "solution": "set contacts [list \" A@EXAMPLE.ORG \" \"B@other.org\" \"   \" \"c@example.org\"]\n set selected {}\n foreach raw $contacts {\n     set email [string tolower [string trim $raw]]\n     if {$email eq \"\"} {continue}\n     if {[string match {*@example.org} $email]} {\n         lappend selected $email\n     }\n }\n puts [join $selected \"\\n\"]\n puts \"数量：[llength $selected]\"",
+      "expected": "a@example.org\nc@example.org\n数量：2",
+      "hints": [
+        "先清理，否则尾部空格会使后缀匹配失败。",
+        "string match 的模式用花括号分组，星号表示任意前缀。"
+      ],
+      "checks": [
+        {
+          "label": "只选指定后缀且正确规范化",
+          "script": "expr {$selected eq {a@example.org c@example.org} && [llength $selected] == 2}"
+        },
+        {
+          "label": "不收录空白或其他域名",
+          "script": "expr {[lsearch -exact $selected \"\"] == -1 && [lsearch -exact $selected b@other.org] == -1}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "string trim $raw 执行后认为 raw 自动改变",
+      "fix": "trim 返回新值，原变量不变；使用 set cleaned [string trim $raw]。"
+    },
+    {
+      "problem": "以为 split $text \"::\" 只会在两个冒号连在一起时切分",
+      "fix": "分隔参数是字符集合，重复的冒号没有特殊意义。需要完整分隔字符串时选用明确的解析方法，不要误用 split。"
+    },
+    {
+      "problem": "先按空格 split 联系人姓名",
+      "fix": "这会破坏“林 雨”这样的完整姓名。已有列表用 foreach 遍历元素，元素内部用字符串命令处理。"
+    }
+  ],
+  "exploration": "在例子一中把邮箱改成“ A@OTHER.ORG ”，观察清理值和匹配标记；再尝试只有空格的 raw。把例子三的分隔集合由 \",;\" 改为 \";\"，观察逗号是否还被切开。",
+  "quiz": [
+    {
+      "question": "string trim \"  林 雨  \" 返回什么？",
+      "options": [
+        "林雨",
+        "林 雨",
+        "原样返回所有空格"
+      ],
+      "answer": 1,
+      "explanation": "trim 默认只删两端空白，不删除中间的姓名空格。"
+    },
+    {
+      "question": "split {a,,b} \",\" 得到几个元素？",
+      "options": [
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": 1,
+      "explanation": "连续分隔符之间有一个空元素，结果是 a、空字符串、b。"
+    }
+  ],
+  "cheatsheet": [
+    "string trim $text：去两端空白",
+    "string tolower / toupper $text：大小写转换",
+    "string length $text：字符串长度",
+    "string match {模式} $text：通配匹配，返回 1/0",
+    "split $text {分隔字符集}：文字转列表",
+    "join $items \"分隔文字\"：列表转文字"
+  ],
+  "next": "清理后记录常常还有姓名、设备号、温度等字段。下一节用字典和数组给每个字段取名字。",
+  "view": "text",
+  "diagram": "assets/diagrams/07.svg"
+}

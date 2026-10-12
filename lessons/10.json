@@ -1,0 +1,162 @@
+{
+  "id": 10,
+  "unit": 4,
+  "title": "过程与参数：把费用计算装进工具",
+  "summary": "用 proc 封装重复计算，以参数接收不同订单，以 return 返回结果。",
+  "minutes": 35,
+  "prerequisites": [
+    "变量与 expr",
+    "条件判断",
+    "列表"
+  ],
+  "objectives": [
+    "定义和调用带参数的过程",
+    "设置默认参数并解释何时使用默认值",
+    "区分返回值与打印输出",
+    "用不同输入验证过程",
+    "识别过程的局部变量"
+  ],
+  "problem": "活动物料、家庭采购和快递订单都需要计算费用。每次复制同一段乘法容易漏改一个数字。把计算写成一个过程，就像制作一个可重复使用的计算表：每次填入不同数据，得到新的结果。",
+  "steps": [
+    {
+      "title": "给重复工作起名字",
+      "body": "proc 名称 {参数列表} {过程体} 定义一个过程。调用方式仍是 Tcl 命令：名称 参数。形参是过程接收的名字，实参是调用时传入的值；调用时 Tcl 会为形参建立局部变量。"
+    },
+    {
+      "title": "返回可继续使用的数值",
+      "body": "return 把值交给调用方。puts 把文本写到输出，两者用途不同。用 set total [fee 3 12] 接住返回值后，还可以继续计算或 format。不要让计算过程只打印答案。"
+    },
+    {
+      "title": "给可选参数一个默认值",
+      "body": "参数列表中的 {delivery 0} 表示 delivery 可省略，默认是 0。可选参数放在必选参数之后。省略参数与传入空字符串不同；空字符串仍是一个实际参数。"
+    },
+    {
+      "title": "看清变量所在的位置",
+      "body": "过程中的 subtotal 默认属于当前调用，外面的同名变量不会自动被读取或改写。第 13 节再讨论明确共享变量的方式。先让输入和输出都经过参数与返回值，通常更容易理解和测试。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "同一个过程计算两张订单",
+      "code": "proc fee {quantity price} {\n    return [expr {$quantity * $price}]\n}\nputs [fee 3 12]\nputs [fee 2 8]",
+      "expected": "36\n16"
+    },
+    {
+      "title": "可省略的运费",
+      "code": "proc deliveredFee {quantity price {delivery 0}} {\n    return [expr {$quantity * $price + $delivery}]\n}\nputs [format \"自提：%.2f 元\" [deliveredFee 2 9.5]]\nputs [format \"配送：%.2f 元\" [deliveredFee 2 9.5 4]]",
+      "expected": "自提：19.00 元\n配送：23.00 元"
+    },
+    {
+      "title": "过程内外的同名变量",
+      "code": "set subtotal 999\nproc discountFee {price} {\n    set subtotal [expr {$price * 0.9}]\n    return $subtotal\n}\nset result [discountFee 20]\nputs [format \"返回值：%.2f\" $result]\nputs \"外部 subtotal：$subtotal\"",
+      "expected": "返回值：18.00\n外部 subtotal：999"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "计算文具费用",
+      "prompt": "定义 stationeryFee {count unitPrice}，返回总价。保留最后两行，输出 4 支 3 元的笔和 2 本 7 元的本子的费用。",
+      "starter": "proc stationeryFee {count unitPrice} {\n    # 返回数量乘以单价\n}\nputs [stationeryFee 4 3]\nputs [stationeryFee 2 7]",
+      "solution": "proc stationeryFee {count unitPrice} {\n    return [expr {$count * $unitPrice}]\n}\nputs [stationeryFee 4 3]\nputs [stationeryFee 2 7]",
+      "expected": "12\n14",
+      "hints": [
+        "用 expr {...} 完成乘法。",
+        "使用 return，而不是仅在过程中 puts。"
+      ],
+      "checks": [
+        {
+          "label": "另一笔订单也正确",
+          "script": "expr {[stationeryFee 5 6] == 30}"
+        },
+        {
+          "label": "零数量与小数单价",
+          "script": "expr {[stationeryFee 0 7] == 0 && abs([stationeryFee 3 1.5] - 4.5) < 1e-9}"
+        }
+      ]
+    },
+    {
+      "title": "加入默认包装费",
+      "prompt": "定义 packedFee，必选参数为 count 与 price，pack 默认 2。返回 count * price + pack。调用一次默认包装费，一次明确免包装费。",
+      "starter": "proc packedFee {count price {pack 2}} {\n    # 完成计算\n}\nputs [packedFee 3 4]\nputs [packedFee 3 4 0]",
+      "solution": "proc packedFee {count price {pack 2}} {\n    return [expr {$count * $price + $pack}]\n}\nputs [packedFee 3 4]\nputs [packedFee 3 4 0]",
+      "expected": "14\n12",
+      "hints": [
+        "{pack 2} 是参数列表里的一个二元素列表。",
+        "省略 pack 才用默认值；传入 0 应保留 0。"
+      ],
+      "checks": [
+        {
+          "label": "默认值与显式值均有效",
+          "script": "expr {[packedFee 2 5] == 12 && [packedFee 2 5 7] == 17}"
+        },
+        {
+          "label": "输入改变后重新计算",
+          "script": "expr {[packedFee 0 8 0] == 0 && [packedFee 1 2.5] == 4.5}"
+        }
+      ]
+    },
+    {
+      "title": "复用带折扣的订单工具",
+      "prompt": "定义 orderFee {count price {delivery 0} {rate 1.0}}。折扣只作用于商品金额，运费不打折。过程内可以使用 subtotal，但不得改变外部同名变量。",
+      "starter": "set subtotal 88\nproc orderFee {count price {delivery 0} {rate 1.0}} {\n    # 商品金额乘折扣，最后加运费\n}\nputs [format \"%.2f\" [orderFee 2 15 5 0.8]]\nputs \"外部 subtotal：$subtotal\"",
+      "solution": "set subtotal 88\nproc orderFee {count price {delivery 0} {rate 1.0}} {\n    set subtotal [expr {$count * $price}]\n    return [expr {$subtotal * $rate + $delivery}]\n}\nputs [format \"%.2f\" [orderFee 2 15 5 0.8]]\nputs \"外部 subtotal：$subtotal\"",
+      "expected": "29.00\n外部 subtotal：88",
+      "hints": [
+        "先算商品 subtotal，再乘 rate。",
+        "局部 subtotal 不需要 global；return 最终金额。"
+      ],
+      "checks": [
+        {
+          "label": "默认参数和不同折扣",
+          "script": "expr {[orderFee 3 10] == 30 && [orderFee 3 10 6 0.5] == 21}"
+        },
+        {
+          "label": "局部变量不改变外部状态",
+          "script": "expr {$subtotal == 88 && [orderFee 0 10 6 0.5] == 6}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "在过程里 puts 结果，然后把 [fee ...] 当成数值使用。",
+      "fix": "puts 通常返回空字符串。计算工具应 return 数值；在调用方决定打印格式。"
+    },
+    {
+      "problem": "以为过程能直接读取外面的 price，或修改同名变量。",
+      "fix": "默认局部作用域隔离了它们。把 price 作为参数传入，把计算结果 return 出来。"
+    }
+  ],
+  "exploration": "把例子 2 的默认 delivery 从 0 改成 6，再运行两次。观察只有省略运费的调用受默认值变化影响；显式传入 4 的调用保持原来的含义。",
+  "quiz": [
+    {
+      "question": "proc fee {n price} {return [expr {$n * $price}]} 中，return 的作用是？",
+      "options": [
+        "打印到屏幕",
+        "把数值交给调用者",
+        "创建全局变量"
+      ],
+      "answer": 1,
+      "explanation": "返回值可以被方括号接住；打印是 puts 的职责。"
+    },
+    {
+      "question": "参数列表 {n price {delivery 0}}，调用 fee 2 5 3 时 delivery 是？",
+      "options": [
+        "0",
+        "3",
+        "空字符串"
+      ],
+      "answer": 1,
+      "explanation": "显式实参 3 覆盖默认值；默认值只在省略该参数时使用。"
+    }
+  ],
+  "cheatsheet": [
+    "定义：proc name {arg1 arg2 {optional default}} {body}",
+    "调用：set result [name value1 value2]",
+    "返回：return $result",
+    "默认情况下，参数和过程中 set 的变量都是局部变量。"
+  ],
+  "next": "第 11 节把输入从手工写在代码中，改为从教学文件读取，再将摘要写入新文件。",
+  "view": "procedure",
+  "diagram": "assets/diagrams/10.svg"
+}

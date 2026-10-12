@@ -1,0 +1,167 @@
+{
+  "id": 8,
+  "unit": 3,
+  "title": "字典与数组",
+  "summary": "用字段名读取和更新设备记录，明确两种数据形态。",
+  "minutes": 35,
+  "prerequisites": [
+    "01–07：变量、列表和文本清理。"
+  ],
+  "objectives": [
+    "用 dict create/get/set/exists 管理记录",
+    "在访问前检查可选字段",
+    "区分字典值与 Tcl 数组变量",
+    "用 array 的基本访问和枚举方式",
+    "避免依赖字典或数组的输出顺序"
+  ],
+  "problem": "一台测量设备的记录包含 id=LAB-07、location=北区 台位、status=ready、runs=2。只用四项列表时，必须记住每个位置的含义。字典让我们按字段名读取，数组则把多个键值元素组织到同一个变量名下；两者形似，却不能混用命令。",
+  "steps": [
+    {
+      "title": "字典是一个可传递的值",
+      "body": "set device [dict create id LAB-07 location \"北区 台位\" status ready runs 2] 生成键值映射。dict get $device location 读取某字段，dict exists $device owner 检查是否存在。字典可以保存在普通变量、作为过程参数传递，或作为另一个字典的值。"
+    },
+    {
+      "title": "读值与改变量的参数不同",
+      "body": "dict get 接收字典值，因此用 $device；dict set 接收要修改的变量名，因此写 dict set device status busy。更新后 device 中保存新的字典值。如果把 $device 传给 dict set，它会把整个值当变量名，不是你要修改的记录。"
+    },
+    {
+      "title": "数组是变量容器",
+      "body": "array set readings {north 21 south 24} 建立数组变量；$readings(north) 读取元素，set readings(north) 22 修改元素。数组自身不是一个普通标量值，所以不能用 $readings 取得整个数组；用 array get readings 得到键值列表。dict create 的值与 array 变量是两种不同形态。"
+    },
+    {
+      "title": "枚举前考虑输出顺序",
+      "body": "array names 返回的顺序不保证；需要稳定输出时 foreach key [lsort [array names readings]]。array exists 检查变量是否为数组，info exists readings(west) 检查单个元素。字典也应按业务指定的字段或排序后的键展示，别依赖内存内部顺序。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "创建和更新设备记录",
+      "code": "set device [dict create id LAB-07 location \"北区 台位\" status ready runs 2]\nputs \"位置：[dict get $device location]\"\ndict set device status busy\ndict set device runs [expr {[dict get $device runs] + 1}]\nputs \"状态：[dict get $device status]，次数：[dict get $device runs]\"",
+      "expected": "位置：北区 台位\n状态：busy，次数：3"
+    },
+    {
+      "title": "可选字段缺失时提供说明",
+      "code": "set sample [dict create id S-12 temperature 23.5]\nif {[dict exists $sample owner]} {\n    puts \"负责人：[dict get $sample owner]\"\n} else {\n    puts \"负责人：未登记\"\n}\ndict set sample owner \"顾 宁\"\nputs \"负责人：[dict get $sample owner]\"",
+      "expected": "负责人：未登记\n负责人：顾 宁"
+    },
+    {
+      "title": "数组按键排序展示",
+      "code": "array set readings {north 21 south 24}\nset readings(north) 22\nforeach key [lsort [array names readings]] {\n    puts \"$key：$readings($key)\"\n}\nputs \"西区存在：[info exists readings(west)]\"\nputs \"它是数组：[array exists readings]\"",
+      "expected": "north：22\nsouth：24\n西区存在：0\n它是数组：1"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "更新一条实验记录",
+      "prompt": "sample 包含 id=S-08、status=waiting、count=4。将 status 改成 done、count 加 1，保留 id。把 status 和 count 的读取结果组成“done / 5”输出。",
+      "starter": "set sample [dict create id S-08 status waiting count 4]\n# 更新两个字段，不覆盖整条记录\nputs \"[dict get $sample status] / [dict get $sample count]\"",
+      "solution": "set sample [dict create id S-08 status waiting count 4]\ndict set sample status done\ndict set sample count [expr {[dict get $sample count] + 1}]\nputs \"[dict get $sample status] / [dict get $sample count]\"",
+      "expected": "done / 5",
+      "hints": [
+        "dict set 的第一个参数是 sample，不是 $sample。",
+        "先 dict get count，计算增量，再 dict set。"
+      ],
+      "checks": [
+        {
+          "label": "状态与次数已更新",
+          "script": "expr {[dict get $sample status] eq \"done\" && [dict get $sample count] == 5}"
+        },
+        {
+          "label": "其他字段保留",
+          "script": "expr {[dict get $sample id] eq \"S-08\" && [dict size $sample] == 3}"
+        }
+      ]
+    },
+    {
+      "title": "区分缺失字段与空字段",
+      "prompt": "first={id A}，second={id B owner {}}，third={id C owner {周 月}}。按三种情况生成 notices 列表：“未登记”“已留空”“周 月”。缺字段用 dict exists 检查，空字段是存在但值为空。输出三个说明，各占一行。",
+      "starter": "set first [dict create id A]\n set second [dict create id B owner \"\"]\n set third [dict create id C owner \"周 月\"]\n set notices {}\n # 遍历三条记录，区分字段不存在和字段值为空\n puts [join $notices \"\\n\"]",
+      "solution": "set first [dict create id A]\n set second [dict create id B owner \"\"]\n set third [dict create id C owner \"周 月\"]\n set notices {}\n foreach record [list $first $second $third] {\n     if {![dict exists $record owner]} {\n         lappend notices \"未登记\"\n     } elseif {[dict get $record owner] eq \"\"} {\n         lappend notices \"已留空\"\n     } else {\n         lappend notices [dict get $record owner]\n     }\n }\n puts [join $notices \"\\n\"]",
+      "expected": "未登记\n已留空\n周 月",
+      "hints": [
+        "必须先确认字段存在，才调用 dict get。",
+        "存在且值为空应进入第二种情况，而不是归入缺失。"
+      ],
+      "checks": [
+        {
+          "label": "三类输入得到不同说明",
+          "script": "expr {$notices eq [list \"未登记\" \"已留空\" \"周 月\"]}"
+        },
+        {
+          "label": "缺失与空值本身没有被改写",
+          "script": "expr {![dict exists $first owner] && [dict exists $second owner] && [dict get $second owner] eq \"\"}"
+        }
+      ]
+    },
+    {
+      "title": "整理数组并转成字典值",
+      "prompt": "使用数组 temperatures 保存 roomA=22、roomB=25，并把 roomA 改成 23。按键排序展示；再使用 array get 的键值列表构造 snapshot 字典，并把 roomB 改成 26。数组 roomB 仍应是 25。输出数组两行和快照 roomB。",
+      "starter": "array set temperatures {roomA 22 roomB 25}\n# 更新数组并打印\nset snapshot [dict create]\n# 将数组转为字典快照并更新快照\nputs \"快照 roomB：[dict exists $snapshot roomB]\"",
+      "solution": "array set temperatures {roomA 22 roomB 25}\nset temperatures(roomA) 23\nforeach key [lsort [array names temperatures]] {\n    puts \"$key：$temperatures($key)\"\n}\nset snapshot [array get temperatures]\ndict set snapshot roomB 26\nputs \"快照 roomB：[dict get $snapshot roomB]\"",
+      "expected": "roomA：23\nroomB：25\n快照 roomB：26",
+      "hints": [
+        "array get 返回键值配对列表，可作为字典值使用。",
+        "snapshot 是普通值的副本，dict set 不会自动改原数组。"
+      ],
+      "checks": [
+        {
+          "label": "数组元素更新正确",
+          "script": "expr {[array exists temperatures] && $temperatures(roomA) == 23 && $temperatures(roomB) == 25}"
+        },
+        {
+          "label": "字典快照有独立值",
+          "script": "expr {[dict get $snapshot roomA] == 23 && [dict get $snapshot roomB] == 26 && [dict size $snapshot] == 2}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "dict get device status，提示不是合法字典",
+      "fix": "dict get 读取值，应写 dict get $device status；与 dict set device status busy 的变量名参数区别开。"
+    },
+    {
+      "problem": "puts $readings，报 variable is array",
+      "fix": "数组容器不能作为普通标量读取。读单项 $readings(north)，或用 array get readings 导出键值列表。"
+    },
+    {
+      "problem": "可选字段不存在时直接 dict get",
+      "fix": "先用 dict exists 判断；缺失、空字符串、0 是三种不同情况，不要混淆。"
+    }
+  ],
+  "exploration": "给设备例子添加 owner \"林 雨\" 字段，再删去你自行加的字段并测试缺失分支。把数组例子的新键放在不同插入位置，确认按 lsort 输出仍保持顺序。思考传递整条记录时，字典值为何比数组变量容易使用。",
+  "quiz": [
+    {
+      "question": "哪条命令修改变量 device 里的字典？",
+      "options": [
+        "dict set $device status busy",
+        "dict set device status busy",
+        "dict get device status busy"
+      ],
+      "answer": 1,
+      "explanation": "dict set 接收要修改的变量名字，dict get 则接收字典的值。"
+    },
+    {
+      "question": "array 与 dict 最准确的区别是？",
+      "options": [
+        "它们是同一种值，所有命令可交换",
+        "dict 是值，array 是包含元素的变量容器",
+        "dict 不能包含空格"
+      ],
+      "answer": 1,
+      "explanation": "字典可以作为普通数据值保存或传递；数组变量需要 array 命令或元素访问语法。"
+    }
+  ],
+  "cheatsheet": [
+    "dict create key value ...：构造字典值",
+    "dict get $record key：读取字段",
+    "dict set record key value：修改字典变量",
+    "dict exists $record key：字段是否存在",
+    "array set a {key value ...}：建立数组变量",
+    "$a(key) / set a(key) value：读取 / 修改元素",
+    "array get a：导出键值列表；lsort [array names a]：稳定枚举"
+  ],
+  "next": "记录字段有时还藏在一行日志文字里。下一节使用简单正则把它们提取出来。",
+  "view": "record",
+  "diagram": "assets/diagrams/08.svg"
+}

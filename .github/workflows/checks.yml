@@ -1,0 +1,19 @@
+name: Verify workshop
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: sudo apt-get update && sudo apt-get install -y tcl
+      - run: python3 scripts/build.py
+      - run: git diff --exit-code -- site lessons projects examples exercises solutions data
+      - run: python3 scripts/check.py --all
+      - run: python3 tests/integrity.py
+      - run: node tests/runtime.mjs
+      - run: node --check site/app.js && node --check site/worker.js && node --check site/engine.js

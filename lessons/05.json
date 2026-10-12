@@ -1,0 +1,166 @@
+{
+  "id": 5,
+  "unit": 2,
+  "title": "重复处理",
+  "summary": "逐条查看测量数据，累计结果并跳过不合格记录。",
+  "minutes": 35,
+  "prerequisites": [
+    "01–04：变量、expr 与 if；本节先用固定的数值序列。"
+  ],
+  "objectives": [
+    "用 foreach 逐项处理数据",
+    "在循环中更新计数与累计值",
+    "区分 foreach、for、while 的适用场景",
+    "用 continue 跳过本次，用 break 结束循环",
+    "为 while 和 for 检查终止条件"
+  ],
+  "problem": "一组测量值是 18、21、-1、19、23。-1 表示采集失败，不能参加平均值计算。我们逐项查看，跳过 -1，统计 4 次有效测量和总和 81。重复处理就是把同一套规则应用到多条输入。",
+  "steps": [
+    {
+      "title": "先使用 foreach",
+      "body": "foreach value {18 21 -1 19 23} {...} 每次把一个元素放到 value，执行一次循环体。序列写在花括号里；下一节会系统学习列表。循环开始前把 count 和 total 初始化为 0，循环中逐步更新。"
+    },
+    {
+      "title": "continue 和 break 控制不同范围",
+      "body": "continue 停止当前这次循环体的剩余命令，开始下一项，因此可跳过无效读数。break 则立刻结束整个最近一层循环，适合已经找到所需记录或达到终止标记。把它们误换位置会遗漏后面的有效数据。"
+    },
+    {
+      "title": "for 适合明确次数",
+      "body": "for {set i 1} {$i <= 3} {incr i} {...} 依次执行初始化、条件、循环体、更新。Tcl 的 for 接收四个参数；条件应放在花括号里，以便每轮重新读取 i。常见错误是计数不更新或上界多算一次。"
+    },
+    {
+      "title": "while 适合条件驱动",
+      "body": "while {$pending > 0} {...} 每轮开始先检查条件。循环体必须有机会改变条件，否则可能永不结束。工作台会限制运行时间，也可点击停止；这只是保护，正确的脚本仍应设计明确的终止条件。"
+    }
+  ],
+  "examples": [
+    {
+      "title": "跳过失败读数",
+      "code": "set count 0\nset total 0\nforeach value {18 21 -1 19 23} {\n    if {$value < 0} {continue}\n    incr count\n    set total [expr {$total + $value}]\n}\nputs \"有效次数：$count\"\nputs \"总和：$total\"",
+      "expected": "有效次数：4\n总和：81"
+    },
+    {
+      "title": "生成三次测量编号",
+      "code": "for {set i 1} {$i <= 3} {incr i} {\n    puts \"测量 $i\"\n}",
+      "expected": "测量 1\n测量 2\n测量 3"
+    },
+    {
+      "title": "清空待处理数量，并找到首个异常",
+      "code": "set pending 3\nwhile {$pending > 0} {\n    puts \"剩余：$pending\"\n    incr pending -1\n}\nforeach value {12 15 31 18} {\n    if {$value > 30} {\n        puts \"首个异常：$value\"\n        break\n    }\n}",
+      "expected": "剩余：3\n剩余：2\n剩余：1\n首个异常：31"
+    }
+  ],
+  "exercises": [
+    {
+      "title": "累计当天步行时间",
+      "prompt": "times={12 8 15 0}；用 foreach 将总分钟数保存为 total，并把记录条数保存为 count。0 分钟仍是一条记录。输出“4 条，共 35 分钟”。",
+      "starter": "set times {12 8 15 0}\nset total 0\nset count 0\n# 逐项累计，别漏掉 0\nputs \"$count 条，共 $total 分钟\"",
+      "solution": "set times {12 8 15 0}\nset total 0\nset count 0\nforeach minutes $times {\n    set total [expr {$total + $minutes}]\n    incr count\n}\nputs \"$count 条，共 $total 分钟\"",
+      "expected": "4 条，共 35 分钟",
+      "hints": [
+        "foreach minutes $times 遍历每条记录。",
+        "每轮都 incr count，即使 minutes=0。"
+      ],
+      "checks": [
+        {
+          "label": "每条记录都计入总数",
+          "script": "expr {$count == [llength $times] && $count == 4}"
+        },
+        {
+          "label": "步行分钟数正确累计",
+          "script": "expr {$total == 35}"
+        }
+      ]
+    },
+    {
+      "title": "跳过负值，并检验空数据",
+      "prompt": "两组数据分别为 {7 -1 0 9 -2} 和 {}。分别累计非负值，得到 total=16、count=3、emptyTotal=0、emptyCount=0。使用 continue 跳过负值，输出两组统计。",
+      "starter": "set readings {7 -1 0 9 -2}\nset emptyReadings {}\nset total 0\nset count 0\nset emptyTotal 0\nset emptyCount 0\n# 分别遍历两组数据\nputs \"有效：$count，总和：$total\"\nputs \"空组：$emptyCount，总和：$emptyTotal\"",
+      "solution": "set readings {7 -1 0 9 -2}\nset emptyReadings {}\nset total 0\nset count 0\nforeach value $readings {\n    if {$value < 0} {continue}\n    set total [expr {$total + $value}]\n    incr count\n}\nset emptyTotal 0\nset emptyCount 0\nforeach value $emptyReadings {\n    if {$value < 0} {continue}\n    set emptyTotal [expr {$emptyTotal + $value}]\n    incr emptyCount\n}\nputs \"有效：$count，总和：$total\"\nputs \"空组：$emptyCount，总和：$emptyTotal\"",
+      "expected": "有效：3，总和：16\n空组：0，总和：0",
+      "hints": [
+        "只有 <0 的项被跳过，0 是有效读数。",
+        "空列表的 foreach 不进入循环体，初始化值就是结果。"
+      ],
+      "checks": [
+        {
+          "label": "跳过负值，保留零值",
+          "script": "expr {$total == 16 && $count == 3 && [llength $readings] == 5}"
+        },
+        {
+          "label": "空输入返回零计数和零总和",
+          "script": "expr {[llength $emptyReadings] == 0 && $emptyTotal == 0 && $emptyCount == 0}"
+        }
+      ]
+    },
+    {
+      "title": "找到首个越界读数后停止",
+      "prompt": "readings={9 14 35 41 12}，limit=30。按顺序检查，把检查次数保存为 visited，找到第一条大于 limit 的值保存为 found 并 break；不要继续检查 41。输出“检查 3 条，首个越界：35”。",
+      "starter": "set readings {9 14 35 41 12}\nset limit 30\nset visited 0\nset found \"未发现\"\n# 先计数，再判断并停止\nputs \"检查 $visited 条，首个越界：$found\"",
+      "solution": "set readings {9 14 35 41 12}\nset limit 30\nset visited 0\nset found \"未发现\"\nforeach value $readings {\n    incr visited\n    if {$value > $limit} {\n        set found $value\n        break\n    }\n}\nputs \"检查 $visited 条，首个越界：$found\"",
+      "expected": "检查 3 条，首个越界：35",
+      "hints": [
+        "进入每轮后先 incr visited。",
+        "赋值 found 后，break 结束整个循环；continue 会继续查下一条。"
+      ],
+      "checks": [
+        {
+          "label": "保留首个越界值",
+          "script": "expr {$limit == 30 && $found == 35}"
+        },
+        {
+          "label": "找到后停止访问数据",
+          "script": "expr {$visited == 3 && $visited < [llength $readings]}"
+        }
+      ]
+    }
+  ],
+  "mistakes": [
+    {
+      "problem": "把 continue 写成 break，负值后面的正常读数都没统计",
+      "fix": "continue 只跳过当前项，break 结束整轮遍历。坏数据需要跳过时用 continue。"
+    },
+    {
+      "problem": "while 的条件变量从不改变",
+      "fix": "在循环体里更新相关变量，例如 incr pending -1；先用很小的输入验证。工作台超时后需要修正代码再运行。"
+    },
+    {
+      "problem": "for 条件写成 \"$i <= 3\"，循环停不下来",
+      "fix": "双引号会提前把 i 替换为初始值，条件可能变成永远成立的固定表达式。用 {$i <= 3} 每轮读取当前 i。"
+    }
+  ],
+  "exploration": "在第一个例子里把 -1 改成 0，预测有效次数与总和，再运行核对。把第三个例子的 break 改为 continue，观察打印了几个异常；然后恢复 break。",
+  "quiz": [
+    {
+      "question": "continue 的作用是什么？",
+      "options": [
+        "结束整个脚本",
+        "跳过当前循环剩余命令，进入下一次",
+        "把当前值加一"
+      ],
+      "answer": 1,
+      "explanation": "continue 只控制最近一层循环的本次迭代，break 才结束循环。"
+    },
+    {
+      "question": "foreach value {} {incr count}，若 count 初始为 0，会得到什么？",
+      "options": [
+        "0",
+        "1",
+        "错误"
+      ],
+      "answer": 0,
+      "explanation": "空列表没有元素，循环体执行零次，初始化值保留。"
+    }
+  ],
+  "cheatsheet": [
+    "foreach item $items { ... }：按元素遍历",
+    "for {初始化} {条件} {更新} {循环体}",
+    "while {条件} {循环体}",
+    "continue：跳过本次剩余部分",
+    "break：结束最近一层循环",
+    "循环前初始化累计变量；测试空输入和终止条件"
+  ],
+  "next": "这些序列是 Tcl 列表。下一节学习安全地构造、查询和整理包含空格的报名名单。",
+  "view": "iterations",
+  "diagram": "assets/diagrams/05.svg"
+}
