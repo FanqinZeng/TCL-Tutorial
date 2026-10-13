@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="560" viewBox="0 0 1440 560" role="img" aria-labelledby="title desc">
+  <title id="title">Tcl 自动化工作坊 · Small scripts, useful results.</title>
+  <desc id="desc">米白与墨绿色的课程封面。把重复的工作交给一小段代码：示例将单价 8 与数量 3 相乘，得到 24。18 节课程、54 道练习、6 个项目。</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#dce1d7" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="wash" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f7f6f0"/>
+      <stop offset="1" stop-color="#eaf0e6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#253934" flood-opacity=".08"/>
+    </filter>
+  </defs>
+  <rect width="1440" height="560" rx="24" fill="url(#wash)"/>
+  <rect x="694" width="746" height="560" rx="24" fill="url(#grid)" opacity=".5"/>
+  <path d="M1374 0H1440V66" fill="#17776b" opacity=".12"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <rect x="64" y="56" width="118" height="57" rx="10" fill="#fff" stroke="#17776b" stroke-width="2"/>
+    <text x="81" y="94" fill="#17776b" font-size="31" font-family="'SFMono-Regular', Consolas, monospace">tcl<tspan fill="#b96b28">→</tspan></text>
+    <text x="205" y="80" fill="#253934" font-size="24" font-weight="600">Tcl 自动化工作坊</text>
+    <text x="205" y="107" fill="#64716b" font-size="15" letter-spacing="2.8">EVERYDAY WORKSHOP</text>
+    <text x="64" y="178" fill="#17776b" font-size="17" letter-spacing="3">SMALL SCRIPTS. USEFUL RESULTS.</text>
+    <text x="60" y="262" fill="#253934" font-size="63" font-weight="650">把重复的工作，</text>
+    <text x="60" y="345" fill="#253934" font-size="63" font-weight="650">交给<tspan fill="#17776b">一小段代码。</tspan></text>
+    <text x="64" y="397" fill="#64716b" font-size="23">从生活数据出发，走进 Tcl 与 VLSI 自动化。</text>
+    <path d="M64 435H628" stroke="#cdd8ce"/>
+    <g fill="#253934" font-size="24">
+      <text x="64" y="482" font-weight="700">18<tspan dx="9" font-size="19" font-weight="400" fill="#64716b">节课程</tspan></text>
+      <text x="250" y="482" font-weight="700">54<tspan dx="9" font-size="19" font-weight="400" fill="#64716b">道练习</tspan></text>
+      <text x="445" y="482" font-weight="700">6<tspan dx="9" font-size="19" font-weight="400" fill="#64716b">个项目</tspan></text>
+    </g>
+  </g>
+  <g transform="translate(748 100) rotate(1.5 298 178)" filter="url(#shadow)">
+    <rect width="594" height="356" rx="16" fill="#fff" stroke="#bdcfc1" stroke-width="2"/>
+    <path d="M16 0H578Q594 0 594 16V55H0V16Q0 0 16 0" fill="#eef3e9"/>
+    <path d="M0 55H594" stroke="#dce1d7"/>
+    <g font-family="'SFMono-Regular', Consolas, monospace">
+      <text x="28" y="35" fill="#64716b" font-size="19">01 / receipt.tcl</text>
+      <g fill="#b96b28"><circle cx="513" cy="27" r="4"/><circle cx="535" cy="27" r="4"/><circle cx="557" cy="27" r="4"/></g>
+      <rect y="56" width="594" height="183" fill="#1d302d"/>
+      <g font-size="24" fill="#e9f1e9">
+        <text x="30" y="107"><tspan fill="#8fd4bb">set</tspan> price <tspan fill="#efb271">8</tspan></text>
+        <text x="30" y="153"><tspan fill="#8fd4bb">set</tspan> quantity <tspan fill="#efb271">3</tspan></text>
+        <text x="30" y="199"><tspan fill="#8fd4bb">puts</tspan> [expr {$price * $quantity}]</text>
+      </g>
+      <text x="30" y="274" fill="#64716b" font-size="16" letter-spacing="2">OUTPUT</text>
+      <text x="29" y="323" fill="#253934" font-size="40">24</text>
+    </g>
+    <rect x="418" y="278" width="146" height="42" rx="21" fill="#e7f2eb"/>
+    <circle cx="441" cy="299" r="5" fill="#17776b"/>
+    <text x="455" y="305" fill="#17776b" font-size="17" font-family="-apple-system, 'Segoe UI', sans-serif">REAL TCL</text>
+  </g>
+  <text x="1047" y="500" text-anchor="middle" fill="#64716b" font-size="17" font-family="-apple-system, 'Segoe UI', 'PingFang SC', sans-serif">读取数据 → 运行脚本 → 看懂结果</text>
+</svg>

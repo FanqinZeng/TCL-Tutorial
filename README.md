@@ -1,71 +1,114 @@
-# Tcl 自动化工作坊 · Tcl Everyday Workshop
+<p align="center">
+  <a href="https://fanqinzeng.github.io/TCL-Tutorial/">
+    <img src="docs/assets/readme-banner.svg" alt="Tcl 自动化工作坊：把重复的工作交给一小段代码。18 节课程、54 道练习、6 个项目。" width="100%">
+  </a>
+</p>
 
-[English](README.en.md) · [完整学习指南](docs/TEACHING.md) · [速查与常见错误](docs/REFERENCE.md)
+<h1 align="center">Tcl 自动化工作坊</h1>
 
-用一小段 Tcl，解决一个看得懂的数据问题。原创任务驱动课程：**6 个单元、18 节完整主课、54 道练习、6 个综合项目**。教学网站包含真实 Tcl 在线实验室、数据结果视图和六段演示；不使用游戏闯关体系。
+<p align="center">从一张购物小票，到一条报告处理流水线。<br>用真实 Tcl，把看得懂的问题变成可运行的脚本。</p>
 
-**仓库：** [FanqinZeng/TCL-Tutorial](https://github.com/FanqinZeng/TCL-Tutorial)
+<p align="center">
+  <a href="https://fanqinzeng.github.io/TCL-Tutorial/"><strong>打开在线工作坊 ↗</strong></a> ·
+  <a href="https://fanqinzeng.github.io/TCL-Tutorial/#lesson/1">开始第一课</a> ·
+  <a href="docs/TEACHING.md">学习指南</a> ·
+  <a href="README.en.md">English</a>
+</p>
 
-**GitHub Pages 目标地址：** [fanqinzeng.github.io/TCL-Tutorial/](https://fanqinzeng.github.io/TCL-Tutorial/)（自动部署状态以仓库 Actions 与实际访问结果为准）。
+<p align="center">
+  <a href="https://github.com/FanqinZeng/TCL-Tutorial/actions/workflows/checks.yml"><img src="https://github.com/FanqinZeng/TCL-Tutorial/actions/workflows/checks.yml/badge.svg" alt="课程与运行器自动检查"></a>
+  <a href="https://github.com/FanqinZeng/TCL-Tutorial/actions/workflows/pages.yml"><img src="https://github.com/FanqinZeng/TCL-Tutorial/actions/workflows/pages.yml/badge.svg" alt="GitHub Pages 部署"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-17776b" alt="MIT 许可证"></a>
+</p>
 
-## 适合谁
+## 先解决一个小问题，再学会一种新能力
 
-- 零基础：按 01–18 顺序，预测输出 → 运行 → 改一处 → 解释结果。
-- 有其他语言基础：重点读 03、06、08、10–15，掌握 Tcl 替换、列表、作用域与 TclOO。
-- VLSI 学习者：复习列表、字典、过程与文件，再学习 16–18 和项目 E/F。商业 EDA 工具命令与教学模型明确区分。
+整理一份名单、清理一段文本、汇总一次实验、筛选一份路径报告。这里是一套原创、任务驱动的 Tcl 课程：每节课从具体问题出发，先预测、再运行、改一处输入，最后解释结果。
 
-## 课程与综合项目
+| 课程 | 可运行示例 | 动手练习 | 综合项目 | 视觉讲解 | 代码演示 |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **18 节 · 6 单元** | **55 个** | **54 道** | **6 个** | **24 张 SVG** | **6 段 × 60 秒** |
 
-| 单元 | 课程 |
-| --- | --- |
-| 1 · 第一次让电脑帮忙 | 01 输出与脚本 · 02 变量与计算 · 03 三种重要符号 |
-| 2 · 选择与重复 | 04 条件 · 05 循环 · 06 列表 |
-| 3 · 文本与结构化数据 | 07 字符串 · 08 字典与数组 · 09 正则 |
-| 4 · 可复用脚本 | 10 过程 · 11 文件 · 12 错误处理 |
-| 5 · 组织项目 | 13 作用域 · 14 模块与参数 · 15 TclOO |
-| 6 · VLSI 应用 | 16 Tcl 与 EDA · 17 教学约束与报告 · 18 分析摘要 |
+- **打开就能运行**：浏览器内置真实 Tcl 8.6.6 WASM 解释器，查看标准输出、最终变量和虚拟文件。
+- **边读边动手**：例子一键载入，练习配有分层提示、折叠答案、输出与行为检查。
+- **看见数据变化**：教材图解与真实运行结果并排展示，可切换运行后的执行观察记录。
+- **按自己的节奏学习**：草稿与阅读记录保存在当前浏览器，支持导入、导出；无需注册。
 
-每节课实际包含：原创 SVG、3 个带预期输出的例子、3 道练习、折叠提示与答案、至少 2 道理解题、常见错误、探索活动和速查。
+## 选择你的起点
 
-项目 A–F：名单清理、家庭开支汇总、测量统计、日志诊断、教学路径筛选、可配置报告流水线。每个项目都有参考实现以及不同输入、空输入、非法输入等验证。
+| 你的经验 | 推荐路线 | 直接开始 |
+| --- | --- | --- |
+| 第一次写程序 | 按 01–18 顺序，先让电脑帮一个小忙 | [输出与脚本 →](https://fanqinzeng.github.io/TCL-Tutorial/#lesson/1) |
+| 学过其他语言 | 重点读 03、06、08、10–15，掌握替换、列表、作用域与 TclOO | [Tcl 的三种重要符号 →](https://fanqinzeng.github.io/TCL-Tutorial/#lesson/3) |
+| 正在学习 VLSI | 复习列表、字典、过程与文件，再读 16–18，完成项目 E/F | [Tcl 与 EDA 工具 →](https://fanqinzeng.github.io/TCL-Tutorial/#lesson/16) |
 
-## 本地网站与 Tcl
+## 工作坊里有什么
+
+<a href="https://fanqinzeng.github.io/TCL-Tutorial/">
+  <img src="docs/screenshots/home.jpg" alt="工作坊真实首页：课程入口、浏览器 Tcl 小实验与三种学习路线" width="100%">
+</a>
+
+<p align="center"><sub>真实网站页面 · 米白阅读区、墨绿代码工作台，以及随手可运行的小实验</sub></p>
+
+| 写一段代码，看懂每个变量 | 把语言能力用到 VLSI 教学数据 |
+| :---: | :---: |
+| [![第 02 课：变量与计算的实际运行页面](docs/screenshots/lesson-02.jpg)](https://fanqinzeng.github.io/TCL-Tutorial/#lesson/2) | [![第 17 课：教学路径约束与报告页面](docs/screenshots/lesson-17.jpg)](https://fanqinzeng.github.io/TCL-Tutorial/#lesson/17) |
+
+[浏览全部课程](https://fanqinzeng.github.io/TCL-Tutorial/#course) · [观看六段代码演示](https://fanqinzeng.github.io/TCL-Tutorial/#videos) · [查看手机页面](docs/screenshots/mobile-11.jpg)
+
+## 从第一行代码，到完整自动化流程
+
+下方链接打开仓库讲义；需要在线实验时，进入 [工作坊课程目录](https://fanqinzeng.github.io/TCL-Tutorial/#course)。
+
+| 单元 | 你会学到什么 | 三节课程 |
+| --- | --- | --- |
+| **01 · 第一次让电脑帮忙** | 输出、计算与 Tcl 替换规则 | [01 输出与脚本](lessons/01/README.md)<br>[02 变量与计算](lessons/02/README.md)<br>[03 三种重要符号](lessons/03/README.md) |
+| **02 · 选择与重复** | 用判断、循环和列表处理一组数据 | [04 条件判断](lessons/04/README.md)<br>[05 重复处理](lessons/05/README.md)<br>[06 列表](lessons/06/README.md) |
+| **03 · 文本与结构化数据** | 清理文本，组织记录，提取字段 | [07 字符串处理](lessons/07/README.md)<br>[08 字典与数组](lessons/08/README.md)<br>[09 正则表达式](lessons/09/README.md) |
+| **04 · 可复用脚本** | 把代码变成工具，读写文件并处理失败 | [10 过程与参数](lessons/10/README.md)<br>[11 文件读写](lessons/11/README.md)<br>[12 错误处理与调试](lessons/12/README.md) |
+| **05 · 组织项目** | 组织名字、配置入口与对象状态 | [13 作用域与命名空间](lessons/13/README.md)<br>[14 脚本组织与参数](lessons/14/README.md)<br>[15 TclOO 入门](lessons/15/README.md) |
+| **06 · VLSI 应用** | 分清工具命令，理解教学报告并生成摘要 | [16 Tcl 与 EDA 工具](lessons/16/README.md)<br>[17 约束与报告](lessons/17/README.md)<br>[18 自动生成分析摘要](lessons/18/README.md) |
+
+每节课包含原创图解、至少 3 个带预期输出的示例、3 道练习、分层提示与答案、理解题、常见错误、探索活动和速查。六段视频提供中文字幕与逐字稿，便于暂停阅读。
+
+## 用六个项目，把知识串起来
+
+| 项目 | 最终做出什么 | 重点能力 |
+| --- | --- | --- |
+| [A · 报名名单清理器](projects/A/README.md) | 去掉空行与重复姓名，按字典序整理名单 | 字符串 · 列表 |
+| [B · 家庭开支摘要](projects/B/README.md) | 按类别汇总开支，单独报告非法记录 | 字典 · 数据校验 |
+| [C · 实验测量数据统计](projects/C/README.md) | 计算数量、极值与均值，标记越界数据 | 过程 · 边界处理 |
+| [D · 日志诊断助手](projects/D/README.md) | 统计错误与警告，保留问题附近的上下文 | 正则 · 文件处理 |
+| [E · 设计路径报告筛选器](projects/E/README.md) | 筛出负 slack，并按严重程度排序 | 教学报告 · 排序 |
+| [F · 可配置的报告生成流程](projects/F/README.md) | 读取配置、验证数据，写出摘要和错误记录 | 模块 · 自动化流水线 |
+
+每个项目都有起始代码、逐步提示、参考实现，以及不同输入、空输入和非法输入验证。也可以直接 [进入在线项目工作台 →](https://fanqinzeng.github.io/TCL-Tutorial/#projects)
+
+## 在自己的电脑上学习
+
+只想体验课程？直接 [打开在线网站](https://fanqinzeng.github.io/TCL-Tutorial/)。本地预览网站只需要 Python 3：
 
 ```sh
 git clone https://github.com/FanqinZeng/TCL-Tutorial.git
 cd TCL-Tutorial
 python3 scripts/serve.py
-# 打开 http://127.0.0.1:8765/
 ```
 
-网页不需要安装 Tcl、Node 或 npm 包，不依赖外部 CDN。请通过 HTTP 打开，不能双击 `site/index.html`。
+浏览器打开 **http://127.0.0.1:8765/**。网页自带 Tcl 运行器，无需安装 Tcl、Node 或 npm 包；运行时与媒体随仓库提供。请通过 HTTP 访问网站。
 
-本地 Tcl 练习需要 **Tcl 8.6+**。Ubuntu/Debian 可用 `sudo apt-get install tcl`；其他平台从 [Tcl 官方软件页](https://www.tcl-lang.org/software/tcltk/)选择发行版。Mac 系统 Tcl 8.5 不支持本课 TclOO。
+要在终端运行课程代码，请安装 **Tcl 8.6+**，然后尝试：
 
 ```sh
 tclsh examples/01/01.tcl
 python3 scripts/check.py --all
-python3 scripts/check.py --lesson 10 --exercise 1 solutions/10/01.tcl
 ```
 
-有文件夹/参数的示例应带上 `data/` 中相应的输入，或使用验证器在临时目录运行。文件写入当前工作目录，请使用独立练习目录。本网站的文件仅存在于浏览器内存中，每次运行重新创建。
+Tcl 发行版见 [官方软件页](https://www.tcl-lang.org/software/tcltk/)。macOS 系统 Tcl 8.5 不支持课程中的 TclOO。有输入文件的示例需使用 `data/` 对应数据；文件写入当前工作目录，建议使用独立练习目录。验证器会创建临时目录。
 
-## 结构与维护
+<details>
+<summary><strong>想修改课程或参与维护？展开开发说明</strong></summary>
 
-```text
-lessons/*.json       原创课程单一来源
-projects/*.json      项目单一来源
-lessons/NN/          生成的 Markdown 讲义
-examples/            生成的可独立运行 Tcl 例子
-exercises/           生成的起始代码
-solutions/           生成的参考答案
-data/                原创输入文件
-site/                无打包依赖的静态网站、WASM 运行时与媒体
-docs/                教学、运行、部署、无障碍及维护说明
-scripts/             内容生成、原生验证、预览和视频制作
-tests/               真实 WASM、内容完整性与验证结果
-.github/workflows/   自动检查与 GitHub Pages 部署
-```
+课程和项目以 JSON 为单一来源。修改 `lessons/*.json`、`projects/*.json` 后，重新生成讲义、Tcl 文件与网站数据：
 
 ```sh
 python3 scripts/build.py
@@ -74,14 +117,36 @@ python3 tests/integrity.py
 node tests/runtime.mjs
 ```
 
-Node 18+ 只用于开发测试，不用于网站访问。详见 [贡献方式](CONTRIBUTING.md)、[部署](docs/DEPLOYMENT.md)、[运行原理](docs/RUNTIME.md)。
+Node 18+ 用于开发测试。主要目录：
 
-## 边界与许可
+```text
+lessons/     课程 JSON 与生成的 Markdown 讲义
+projects/    项目 JSON、讲义、起始代码与参考实现
+examples/    可独立运行的 Tcl 示例
+exercises/   练习起始代码
+solutions/   练习参考答案
+data/        原创教学输入文件
+site/        静态网站、WASM 运行时、图解与视频
+docs/        教学、部署、运行与维护文档
+scripts/     内容生成、验证、预览与媒体制作
+tests/       内容完整性与真实 WASM 回归检查
+```
 
-浏览器真实解释器为 Wacl 随附 **Tcl 8.6.6**，不是最新 Tcl；本地建议 8.6+，也验证 Tcl 9.0.4。每次运行独立 Worker，执行超过 5 秒可终止。没有账号、私人后端、遥测或排行榜。代码草稿和阅读记录留在当前浏览器，可导出/导入。
+详见 [贡献指南](CONTRIBUTING.md) · [内容格式](docs/CONTENT_SCHEMA.md) · [部署说明](docs/DEPLOYMENT.md)。
 
-时序、设计对象和 EDA 操作是原创教学模型；没有商业 EDA 连接、真实 STA、Calibre 或 GDS 生成。教学报告格式不能直接替代厂商报告解析器。
+</details>
 
-原创代码、讲义与 SVG 使用 [MIT](LICENSE)。第三方运行时保留各自许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。语言规则参考 [Tcl 官方手册](https://www.tcl-lang.org/man/tcl8.6/TclCmd/contents.htm)，课程、题目、数据和页面结构独立设计。
+## 运行方式与验证
 
-验证详情与实际页面截图：[QA](docs/QA.md)。
+浏览器使用 Wacl 随附的 **Tcl 8.6.6**。每次运行创建独立 Worker 与内存文件系统，5 秒执行上限；文件结果可下载。草稿和阅读记录留在当前浏览器，可手动导出、导入。
+
+已验证原生 Tcl 9.0.4 与浏览器 WASM 各 **138/138** 用例通过，另有 **10 项 WASM 回归检查**；持续集成也验证 Tcl 8.6。执行记录展示真实运行后的观察信息。VLSI 内容使用简化教学模型，未连接商业 EDA，也不提供真实 STA、Calibre 或 GDS 生成。
+
+[验证记录与截图](docs/QA.md) · [运行原理](docs/RUNTIME.md) · [无障碍说明](docs/ACCESSIBILITY.md) · [Tcl 速查](docs/REFERENCE.md)
+
+---
+
+<p align="center">
+  原创代码、讲义与图解采用 <a href="LICENSE">MIT 许可证</a> · <a href="THIRD_PARTY_NOTICES.md">第三方声明</a><br>
+  <sub>FanqinZeng · 语言规则参考 <a href="https://www.tcl-lang.org/man/tcl8.6/TclCmd/contents.htm">Tcl 官方手册</a></sub>
+</p>
